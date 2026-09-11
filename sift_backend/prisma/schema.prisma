@@ -1,0 +1,94 @@
+datasource db {
+  provider = "mysql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           Int      @id @default(autoincrement()) @db.UnsignedInt
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(0)
+  recipes      Recipe[]
+
+  @@map("users")
+}
+
+model Recipe {
+  id                Int           @id @default(autoincrement()) @db.UnsignedInt
+  userId            Int           @map("user_id") @db.UnsignedInt
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title             String        @db.VarChar(255)
+  sourceUrl         String?       @map("source_url") @db.VarChar(2048)
+  imageUrl          String?       @map("image_url") @db.VarChar(2048)
+  servings          String?       @db.VarChar(50)
+  prepTime          String?       @map("prep_time") @db.VarChar(50)
+  cookTime          String?       @map("cook_time") @db.VarChar(50)
+  calories          Float?
+  proteinGrams      Float?        @map("protein_grams")
+  fatGrams          Float?        @map("fat_grams")
+  saturatedFatGrams Float?        @map("saturated_fat_grams")
+  transFatGrams     Float?        @map("trans_fat_grams")
+  cholesterolMg     Float?        @map("cholesterol_mg")
+  sodiumMg          Float?        @map("sodium_mg")
+  carbGrams         Float?        @map("carb_grams")
+  fiberGrams        Float?        @map("fiber_grams")
+  sugarGrams        Float?        @map("sugar_grams")
+  vitaminDMcg       Float?        @map("vitamin_d_mcg")
+  calciumMg         Float?        @map("calcium_mg")
+  ironMg            Float?        @map("iron_mg")
+  potassiumMg       Float?        @map("potassium_mg")
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt         DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  ingredients       Ingredient[]
+  instructions      Instruction[]
+  recipeTags        RecipeTag[]
+
+  @@index([userId], map: "idx_recipes_user_id")
+  @@map("recipes")
+}
+
+model Ingredient {
+  id       Int     @id @default(autoincrement()) @db.UnsignedInt
+  recipeId Int     @map("recipe_id") @db.UnsignedInt
+  recipe   Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  name     String  @db.VarChar(255)
+  quantity String? @db.VarChar(50)
+  unit     String? @db.VarChar(50)
+  position Int     @default(0) @db.UnsignedSmallInt
+
+  @@index([recipeId], map: "idx_ingredients_recipe_id")
+  @@map("ingredients")
+}
+
+model Instruction {
+  id         Int    @id @default(autoincrement()) @db.UnsignedInt
+  recipeId   Int    @map("recipe_id") @db.UnsignedInt
+  recipe     Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  stepNumber Int    @map("step_number") @db.UnsignedSmallInt
+  text       String @db.Text
+
+  @@index([recipeId], map: "idx_instructions_recipe_id")
+  @@map("instructions")
+}
+
+model Tag {
+  id         Int         @id @default(autoincrement()) @db.UnsignedInt
+  name       String      @unique @db.VarChar(100)
+  recipeTags RecipeTag[]
+
+  @@map("tags")
+}
+
+model RecipeTag {
+  recipeId Int    @map("recipe_id") @db.UnsignedInt
+  tagId    Int    @map("tag_id") @db.UnsignedInt
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  tag      Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([recipeId, tagId])
+  @@index([tagId], map: "tag_id")
+  @@map("recipe_tags")
+}

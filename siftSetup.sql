@@ -1,5 +1,5 @@
-CREATE DATABASE IF NOT EXISTS `tablespoon`;
-USE tablespoon;
+CREATE DATABASE IF NOT EXISTS `sift`;
+USE sift;
 
 -- Users
 CREATE TABLE users (

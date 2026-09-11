@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+/* Switch the `dark:` variant from OS preference to an explicit `.dark` class
+   on <html>, so the theme toggle (not just system settings) controls it. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #fffaf3;
+  --foreground: #27180a;
+}
+
+:root.dark {
+  --background: #17141f;
+  --foreground: #f4ecff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sift</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header>
+  <div class="brand">
+    <span class="brand-icon" aria-hidden="true">🥄</span>
+    <div>
+      <h1>Sift</h1>
+      <p class="tagline">Save, scale, and cook your favorite recipes</p>
+    </div>
+  </div>
+  <div id="session-info" class="session-info hidden">
+    <span id="session-email"></span>
+    <button id="logout-btn" class="secondary">Log out</button>
+  </div>
+</header>
+
+<main>
+  <div id="message" class="message hidden"></div>
+
+  <!-- Auth -->
+  <section id="auth-section" class="card">
+    <div class="tabs">
+      <button id="tab-login" class="tab active">Log in</button>
+      <button id="tab-signup" class="tab">Sign up</button>
+    </div>
+
+    <form id="login-form" class="form">
+      <label>Email <input type="email" name="email" required /></label>
+      <label>Password <input type="password" name="password" required /></label>
+      <button type="submit">Log in</button>
+    </form>
+
+    <form id="signup-form" class="form hidden">
+      <label>Email <input type="email" name="email" required /></label>
+      <label>Password <input type="password" name="password" required minlength="8" /></label>
+      <p class="field-hint">At least 8 characters, with an uppercase letter, a lowercase letter, a number, and a special character.</p>
+      <label>Confirm password <input type="password" name="confirmPassword" required minlength="8" /></label>
+      <button type="submit">Sign up</button>
+    </form>
+  </section>
+
+  <!-- Guest preview (shown only when logged out) -->
+  <section id="guest-preview-section" class="card">
+    <h2>Preview a recipe from a URL</h2>
+    <p class="hint">No account needed to look — just to save it.</p>
+    <form id="guest-preview-form" class="form-inline">
+      <input type="url" name="url" placeholder="https://example.com/some-recipe" required />
+      <button type="submit">Preview</button>
+    </form>
+    <div id="guest-preview-result"></div>
+  </section>
+
+  <!-- App (shown once logged in) -->
+  <div id="app-section" class="hidden">
+
+    <section class="card">
+      <h2>Import recipe from a URL</h2>
+      <form id="import-form" class="form-inline">
+        <input type="url" name="url" placeholder="https://example.com/some-recipe" required />
+        <button type="submit">Import</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2 id="recipe-form-title">New recipe</h2>
+      <form id="recipe-form" class="form">
+        <input type="hidden" name="id" />
+        <label>Title <input type="text" name="title" required /></label>
+        <div class="grid3">
+          <label>Servings <input type="text" name="servings" /></label>
+          <label>Prep time <input type="text" name="prepTime" /></label>
+          <label>Cook time <input type="text" name="cookTime" /></label>
+        </div>
+        <label>Image URL <input type="url" name="imageUrl" /></label>
+
+        <h3>Ingredients</h3>
+        <div id="ingredients-rows"></div>
+        <button type="button" id="add-ingredient" class="secondary small">+ Add ingredient</button>
+
+        <h3>Instructions</h3>
+        <div id="instructions-rows"></div>
+        <button type="button" id="add-instruction" class="secondary small">+ Add step</button>
+
+        <div class="form-actions">
+          <button type="submit">Save recipe</button>
+          <button type="button" id="cancel-edit" class="secondary hidden">Cancel edit</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Your recipes</h2>
+      <button id="refresh-recipes" class="secondary small">Refresh</button>
+      <div id="recipes-list" class="recipes-list"></div>
+    </section>
+
+    <section class="card">
+      <h2>Account</h2>
+      <form id="update-account-form" class="form">
+        <label>Email <input type="email" name="email" /></label>
+        <label>New password (leave blank to keep current) <input type="password" name="password" minlength="8" /></label>
+        <p class="field-hint">At least 8 characters, with an uppercase letter, a lowercase letter, a number, and a special character.</p>
+        <label>Current password (required to save changes) <input type="password" name="currentPassword" required /></label>
+        <button type="submit">Save account changes</button>
+      </form>
+
+      <form id="delete-account-form" class="form">
+        <h3>Delete account</h3>
+        <label>Current password <input type="password" name="currentPassword" required /></label>
+        <button type="submit" class="danger">Delete my account</button>
+      </form>
+    </section>
+
+  </div>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
