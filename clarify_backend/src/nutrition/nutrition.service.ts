@@ -107,6 +107,9 @@ const SMALL_UNIT_GRAMS: Record<string, number> = {
   pinches: 0.36,
   dash: 0.6,
   dashes: 0.6,
+  // USDA cheese slices run 16-28g, and often under an "undetermined" unit.
+  slice: 21,
+  slices: 21,
 };
 
 // Typical grams-per-cup for common dry/dense ingredients whose density is far
@@ -150,6 +153,8 @@ const DRY_GOODS_GRAMS_PER_CUP: [RegExp, number][] = [
 // Garlic/spice "clove" patterns are listed before the bare "clove" pattern
 // (whole clove, the spice) since `.find` takes the first match.
 const WHOLE_ITEM_GRAMS: [RegExp, number][] = [
+  // First, so "potato buns" isn't weighed as whole potatoes.
+  [/\bbuns?\b/i, 50],
   [/egg\s*yolk/i, 18],
   [/egg\s*white/i, 33],
   [/\begg\b/i, 50],
@@ -232,10 +237,65 @@ const EGG_WHOLE_NUTRIENTS = [
   { number: '328', amount: 2.0 },
 ];
 
+// USDA SR Legacy per-100g values: "Mustard, prepared, yellow" (172234),
+// "Rolls, hamburger or hotdog, plain" (172796), "Salad dressing, mayonnaise,
+// regular" (171009).
+const MUSTARD_NUTRIENTS = [
+  { number: '208', amount: 60 },
+  { number: '203', amount: 3.74 },
+  { number: '204', amount: 3.34 },
+  { number: '606', amount: 0.214 },
+  { number: '605', amount: 0.009 },
+  { number: '601', amount: 0 },
+  { number: '307', amount: 1100 },
+  { number: '205', amount: 5.83 },
+  { number: '291', amount: 4 },
+  { number: '269', amount: 0.92 },
+  { number: '328', amount: 0 },
+  { number: '301', amount: 63 },
+  { number: '303', amount: 1.61 },
+  { number: '306', amount: 152 },
+];
+const BUN_NUTRIENTS = [
+  { number: '208', amount: 279 },
+  { number: '203', amount: 9.77 },
+  { number: '204', amount: 3.91 },
+  { number: '606', amount: 0.842 },
+  { number: '605', amount: 0.027 },
+  { number: '601', amount: 0 },
+  { number: '307', amount: 494 },
+  { number: '205', amount: 50.1 },
+  { number: '291', amount: 1.8 },
+  { number: '269', amount: 7.28 },
+  { number: '328', amount: 0 },
+  { number: '301', amount: 144 },
+  { number: '303', amount: 3.43 },
+  { number: '306', amount: 122 },
+];
+const MAYONNAISE_NUTRIENTS = [
+  { number: '208', amount: 680 },
+  { number: '203', amount: 0.96 },
+  { number: '204', amount: 74.8 },
+  { number: '606', amount: 11.7 },
+  { number: '605', amount: 0.187 },
+  { number: '601', amount: 42 },
+  { number: '307', amount: 635 },
+  { number: '205', amount: 0.57 },
+  { number: '291', amount: 0 },
+  { number: '269', amount: 0.57 },
+  { number: '328', amount: 0.2 },
+  { number: '301', amount: 8 },
+  { number: '303', amount: 0.21 },
+  { number: '306', amount: 20 },
+];
+
 // A handful of extremely common ingredients where USDA's own data
 // consistently fails for this recipe app's purposes, but whose real
 // nutrition is simple/well-established enough to hardcode directly,
 // skipping the search entirely:
+// - Mustard: "mustard"/"Dijon mustard" top-match "Oil, mustard" (884 kcal/100g).
+// - Buns: "potato buns" top-matches "Cinnamon buns, frosted".
+// - Mayonnaise: search ranks the low-calorie variant above regular.
 // - Salt: "kosher salt"/"sea salt" searches rank kosher dill pickles above
 //   actual salt. Value is USDA's own "Salt, table" sodium figure.
 // - Egg (whole/yolk/white): the specific fdcIds for all three of USDA's own
@@ -254,6 +314,18 @@ const KNOWN_INGREDIENT_OVERRIDES: [
   [/egg\s*yolk/i, EGG_YOLK_NUTRIENTS],
   [/egg\s*white/i, EGG_WHITE_NUTRIENTS],
   [/\begg\b/i, EGG_WHOLE_NUTRIENTS],
+  [
+    /^(?!.*\b(seeds?|greens?|oil|powder|dry|ground)\b).*\bmustard\b/i,
+    MUSTARD_NUTRIENTS,
+  ],
+  [
+    /^(?!.*\b(cinnamon|honey|sticky|cross|bao|steamed)\b).*\bbuns?\b/i,
+    BUN_NUTRIENTS,
+  ],
+  [
+    /^(?!.*\b(light|low|reduced|fat.free)\b).*\bmayo(nnaise)?\b/i,
+    MAYONNAISE_NUTRIENTS,
+  ],
 ];
 
 // Fallback grams-per-unit for volume units, used only when the matched food
@@ -368,7 +440,9 @@ export class NutritionService {
    * Strips parenthetical asides (e.g. "(about 1 ½ lbs)", "(, minced)") out of
    * a scraped ingredient name before it's used as a search query. USDA's API
    * gateway rejects any query containing a parenthesis with a bare 400, and
-   * prep notes like these aren't useful for food matching anyway.
+   * prep notes like these aren't useful for food matching anyway. Slashes and
+   * asterisks (e.g. "80/20 or 85/15 lean ground beef*") are replaced too —
+   * they trip the same gateway 400 most of the time.
    *
    * Also strips "chopped"/"minced"/"shredded": empirically, USDA's search
    * ranks a "[Meat], chopped/minced, canned" or unrelated "..., shredded"
@@ -395,6 +469,7 @@ export class NutritionService {
 
     const stripped = withoutParens
       .replace(/[()]/g, ' ') // any leftover unbalanced paren
+      .replace(/[/*]/g, ' ')
       .replace(/\b(chopped|minced|shredded)\b/gi, ' ')
       .replace(/\s+/g, ' ')
       .trim();
@@ -524,13 +599,20 @@ export class NutritionService {
    * (for its precise foodPortions and complete nutrient set) — this keeps
    * every ingredient lookup at a constant 2 requests instead of up to 6,
    * regardless of how many candidates would otherwise need to be skipped.
+   *
+   * The detail fetch is only waited on for `detailTimeoutMs`; past that the
+   * search data is used, and the still-running request is handed back as
+   * `lateDetail` so the cache can be upgraded when it lands.
    */
   private async lookupFoodDetail(
     name: string,
     apiKey: string,
-  ): Promise<FdcFoodDetail | null> {
+  ): Promise<{
+    detail: FdcFoodDetail | null;
+    lateDetail?: Promise<FdcFoodDetail>;
+  }> {
     const override = this.knownIngredientOverride(name);
-    if (override) return override;
+    if (override) return { detail: override };
 
     const params = new URLSearchParams({
       api_key: apiKey,
@@ -542,7 +624,7 @@ export class NutritionService {
       `${FDC_BASE_URL}/foods/search?${params.toString()}`,
     );
     const candidates = data.foods ?? [];
-    if (candidates.length === 0) return null;
+    if (candidates.length === 0) return { detail: null };
 
     const winner =
       candidates.find((c) =>
@@ -550,9 +632,22 @@ export class NutritionService {
           foodNutrients: this.normalizeSearchNutrients(c),
         }),
       ) ?? candidates[0];
+    const searchData: FdcFoodDetail = {
+      foodNutrients: this.normalizeSearchNutrients(winner),
+      foodPortions: [],
+    };
 
+    const detailRequest = this.getFoodDetail(winner.fdcId, apiKey);
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<'timeout'>((resolve) => {
+      timer = setTimeout(() => resolve('timeout'), this.detailTimeoutMs);
+    });
     try {
-      return await this.getFoodDetail(winner.fdcId, apiKey);
+      const result = await Promise.race([detailRequest, timeout]);
+      if (result === 'timeout') {
+        return { detail: searchData, lateDetail: detailRequest };
+      }
+      return { detail: result };
     } catch (error) {
       // The detail endpoint can 404 on an fdcId its own search index still
       // returns (seen consistently for a handful of real fdcIds) — fall
@@ -561,12 +656,16 @@ export class NutritionService {
       this.logger.warn(
         `USDA food ${winner.fdcId} detail fetch failed for "${name}", using search data instead: ${(error as Error).message}`,
       );
-      return {
-        foodNutrients: this.normalizeSearchNutrients(winner),
-        foodPortions: [],
-      };
+      return { detail: searchData };
+    } finally {
+      clearTimeout(timer);
     }
   }
+
+  // USDA's detail endpoint builds per-sample lab data for some Foundation
+  // Foods and can take 20s+ (e.g. american cheese: 2.3MB), while typical
+  // responses finish well under a second.
+  private readonly detailTimeoutMs = 1500;
 
   /**
    * Cached wrapper around `lookupFoodDetail`. The same handful of staples
@@ -589,11 +688,23 @@ export class NutritionService {
       return cached.detail;
     }
 
-    const detail = await this.lookupFoodDetail(name, apiKey);
+    const { detail, lateDetail } = await this.lookupFoodDetail(name, apiKey);
     this.foodDetailCache.set(cacheKey, {
       detail,
       expiresAt: Date.now() + FOOD_DETAIL_CACHE_TTL_MS,
     });
+    void lateDetail
+      ?.then((full) =>
+        this.foodDetailCache.set(cacheKey, {
+          detail: full,
+          expiresAt: Date.now() + FOOD_DETAIL_CACHE_TTL_MS,
+        }),
+      )
+      .catch((error: Error) =>
+        this.logger.warn(
+          `Late USDA detail fetch failed for "${name}", keeping search data: ${error.message}`,
+        ),
+      );
     return detail;
   }
 
@@ -649,6 +760,18 @@ export class NutritionService {
     }
 
     const normalizedUnit = (unit ?? '').trim().toLowerCase();
+
+    // Amount-less toppings ("mustard", "pickle chips", "special sauce") are a
+    // spoonful per serving, not a whole 100g.
+    if (
+      this.parseQuantity(quantity) == null &&
+      !normalizedUnit &&
+      /\b(mustard|ketchup|catsup|mayo|mayonnaise|sauce|relish|pickles?|salsa|dressing|sriracha|aioli)\b/i.test(
+        name,
+      )
+    ) {
+      return 15;
+    }
 
     const amount = this.parseQuantity(quantity) ?? 1;
 

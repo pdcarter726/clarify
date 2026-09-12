@@ -176,6 +176,21 @@ describe('NutritionService', () => {
     expect(query).toBe('butter');
   });
 
+  it("replaces slashes and asterisks in the query, since USDA's gateway usually 400s on them", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ foods: [] }));
+    global.fetch = fetchMock;
+
+    await service.calculateForIngredients([
+      { name: '80/20 or 85/15 lean ground beef*' },
+    ]);
+
+    const [url] = fetchMock.mock.calls[0] as [string];
+    const query = new URL(url).searchParams.get('query');
+    expect(query).toBe('80 20 or 85 15 lean ground beef');
+  });
+
   it.each(['chopped chocolate', 'minced garlic', 'shredded chicken'])(
     'strips "chopped"/"minced"/"shredded" from the query %s, since USDA\'s search jumps to an unrelated meat/cheese match with them present',
     async (name) => {
@@ -427,6 +442,21 @@ describe('NutritionService', () => {
     expect(result.calories).toBeCloseTo(4.5, 1);
   });
 
+  it('uses a typical slice weight instead of the flat 100g guess when USDA has no slice portion', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(searchResult(1)))
+      .mockResolvedValueOnce(jsonResponse(foodDetail({ calories: 400 }))); // no foodPortions
+    global.fetch = fetchMock;
+
+    // 6 slices @ 21g @ 400 kcal/100g = 504 kcal, not 2400.
+    const result = await service.calculateForIngredients([
+      { name: 'sharp cheddar cheese', quantity: '6', unit: 'slice' },
+    ]);
+
+    expect(result.calories).toBe(504);
+  });
+
   it('uses a real gram weight for a counted staple instead of the flat 100g guess when no unit is given', async () => {
     const fetchMock = jest
       .fn()
@@ -480,6 +510,86 @@ describe('NutritionService', () => {
     expect(result.calories).toBe(0);
   });
 
+  it('hardcodes prepared mustard rather than searching, since search matches mustard oil', async () => {
+    const fetchMock = jest.fn();
+    global.fetch = fetchMock;
+
+    // 1 tbsp ~= 14.79g @ 60 kcal/100g.
+    const result = await service.calculateForIngredients([
+      { name: 'Dijon mustard', quantity: '1', unit: 'tablespoon' },
+    ]);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.calories).toBe(8.9);
+  });
+
+  it('still searches for mustard seeds/greens/powder instead of using prepared mustard', async () => {
+    const fetchMock = jest.fn().mockResolvedValue(jsonResponse({ foods: [] }));
+    global.fetch = fetchMock;
+
+    await service.calculateForIngredients([
+      { name: 'yellow mustard seeds', quantity: '1', unit: 'teaspoon' },
+    ]);
+
+    expect(fetchMock).toHaveBeenCalled();
+  });
+
+  it('hardcodes burger buns at a real bun weight, not a whole potato or a frosted cinnamon bun', async () => {
+    const fetchMock = jest.fn();
+    global.fetch = fetchMock;
+
+    // 2 buns @ 50g @ 279 kcal/100g.
+    const result = await service.calculateForIngredients([
+      { name: 'potato buns', quantity: '2' },
+    ]);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.calories).toBe(279);
+  });
+
+  it('still searches for cinnamon buns', async () => {
+    const fetchMock = jest.fn().mockResolvedValue(jsonResponse({ foods: [] }));
+    global.fetch = fetchMock;
+
+    await service.calculateForIngredients([
+      { name: 'cinnamon buns', quantity: '2' },
+    ]);
+
+    expect(fetchMock).toHaveBeenCalled();
+  });
+
+  it('hardcodes regular mayonnaise, but still searches for light mayo', async () => {
+    const fetchMock = jest.fn().mockResolvedValue(jsonResponse({ foods: [] }));
+    global.fetch = fetchMock;
+
+    // 1/2 cup ~= 118.29g @ 680 kcal/100g.
+    const regular = await service.calculateForIngredients([
+      { name: 'mayonnaise', quantity: '1/2', unit: 'cup' },
+    ]);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(regular.calories).toBe(804.4);
+
+    await service.calculateForIngredients([
+      { name: 'light mayonnaise', quantity: '1/2', unit: 'cup' },
+    ]);
+    expect(fetchMock).toHaveBeenCalled();
+  });
+
+  it('counts an amount-less condiment/topping line as about a tablespoon, not 100g', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(searchResult(1)))
+      .mockResolvedValueOnce(jsonResponse(foodDetail({ calories: 400 })));
+    global.fetch = fetchMock;
+
+    // 15g @ 400 kcal/100g = 60 kcal, not 400.
+    const result = await service.calculateForIngredients([
+      { name: 'special sauce' },
+    ]);
+
+    expect(result.calories).toBe(60);
+  });
+
   it('fully strips nested parentheses instead of leaving a stray ")" that still trips USDA\'s rejection', async () => {
     const fetchMock = jest
       .fn()
@@ -526,6 +636,48 @@ describe('NutritionService', () => {
     ]);
 
     expect(result.calories).toBe(200);
+  });
+
+  it("doesn't wait on a slow detail fetch: uses search data right away, then caches the full detail once it lands", async () => {
+    let resolveDetail!: (value: unknown) => void;
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(
+          multiSearchResultWithNutrients([
+            { fdcId: 1, nutrients: { calories: 100 } },
+          ]),
+        ),
+      )
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveDetail = resolve;
+        }),
+      );
+    global.fetch = fetchMock;
+    Object.assign(service, { detailTimeoutMs: 10 });
+
+    // No portion data yet => water density: 1 cup ~= 236.588g @ 100 kcal/100g.
+    const first = await service.calculateForIngredients([
+      { name: 'kale', quantity: '1', unit: 'cup' },
+    ]);
+    expect(first.calories).toBe(236.6);
+
+    resolveDetail(
+      jsonResponse(
+        foodDetail({ calories: 100 }, [
+          { measureUnitName: 'cup', gramWeight: 50 },
+        ]),
+      ),
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+
+    // The late detail's 50g cup portion is now cached, with no new requests.
+    const second = await service.calculateForIngredients([
+      { name: 'kale', quantity: '1', unit: 'cup' },
+    ]);
+    expect(second.calories).toBe(50);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('treats an explicitly "to taste"/"optional" ingredient with no quantity as negligible, not a full 100g', async () => {
