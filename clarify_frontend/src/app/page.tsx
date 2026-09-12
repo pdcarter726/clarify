@@ -13,7 +13,7 @@ const FEATURES = [
   {
     emoji: "🔗",
     title: "Import from any URL",
-    body: "Paste a link to a recipe and Sift pulls out the title, ingredients, and steps automatically.",
+    body: "Paste a link to a recipe and Clarify pulls out the title, ingredients, and steps automatically.",
   },
   {
     emoji: "🏷️",
@@ -109,7 +109,7 @@ export default function LandingPage() {
         <div className={cardClass}>
           <h2 className="mb-1 text-lg font-bold text-zinc-900 dark:text-white">Try it now</h2>
           <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
-            Paste a recipe URL to see Sift in action — no account required.
+            Paste a recipe URL to see Clarify in action — no account required.
           </p>
           <form onSubmit={handlePreview} className="flex flex-col gap-2 sm:flex-row">
             <input

@@ -1,5 +1,5 @@
-CREATE DATABASE IF NOT EXISTS `sift`;
-USE sift;
+CREATE DATABASE IF NOT EXISTS `clarify`;
+USE clarify;
 
 -- Users
 CREATE TABLE users (

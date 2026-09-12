@@ -18,13 +18,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sift",
+  title: "Clarify",
   description: "Save, organize, and cook from your favorite recipes.",
 };
 
 // Applies the saved theme before first paint so switching themes doesn't
 // cause a light/dark flash on reload.
-const NO_FLASH_THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('sift_theme');if(!t){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}if(t==='dark'){document.documentElement.classList.add('dark');}}catch(e){}})();`;
+const NO_FLASH_THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('clarify_theme');if(!t){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}if(t==='dark'){document.documentElement.classList.add('dark');}}catch(e){}})();`;
 
 /**
  * Root layout: wires up Theme/Auth/Toast providers (in that order, since Toast

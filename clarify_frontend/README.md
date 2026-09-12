@@ -1,6 +1,6 @@
-# Sift frontend
+# Clarify frontend
 
-A Next.js (App Router) + React + TypeScript + Tailwind CSS client for the Sift API in `../sift_backend`.
+A Next.js (App Router) + React + TypeScript + Tailwind CSS client for the Clarify API in `../clarify_backend`.
 
 ## Setup
 
@@ -12,7 +12,7 @@ npm run dev
 
 The dev server runs on **http://localhost:3001** (the backend defaults to port 3000, so this avoids a clash).
 
-Start the backend first (`../sift_backend`, `npm run start:dev`) so auth and recipe requests succeed.
+Start the backend first (`../clarify_backend`, `npm run start:dev`) so auth and recipe requests succeed.
 
 ## Structure
 

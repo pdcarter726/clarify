@@ -1,10 +1,10 @@
-# Sift frontend (test harness)
+# Clarify frontend (test harness)
 
-A minimal, dependency-free HTML/CSS/JS page for exercising the `sift_backend` API by hand: signup/login, recipe CRUD, importing a recipe from a URL, and account updates/deletion with the current-password checks.
+A minimal, dependency-free HTML/CSS/JS page for exercising the `clarify_backend` API by hand: signup/login, recipe CRUD, importing a recipe from a URL, and account updates/deletion with the current-password checks.
 
 ## Run it
 
-1. Start the backend first (from `sift_backend/`):
+1. Start the backend first (from `clarify_backend/`):
    ```
    npm run start:dev
    ```
@@ -12,9 +12,9 @@ A minimal, dependency-free HTML/CSS/JS page for exercising the `sift_backend` AP
 
 2. Serve this folder as static files on a port other than 3000 (the backend is already using that one). Any of these work:
    ```
-   npx serve -l 5500 sift_frontend
+   npx serve -l 5500 clarify_frontend
    # or
-   python -m http.server 5500 --directory sift_frontend
+   python -m http.server 5500 --directory clarify_frontend
    ```
    Then open `http://localhost:5500`.
 
@@ -24,7 +24,7 @@ A minimal, dependency-free HTML/CSS/JS page for exercising the `sift_backend` AP
 
 ## Notes
 
-- The JWT is stored in `localStorage` under `sift_token`. Logging out just clears it.
+- The JWT is stored in `localStorage` under `clarify_token`. Logging out just clears it.
 - Ingredients/instructions are entered as dynamic rows that map directly to the API's `{name, quantity, unit, position}` / `{stepNumber, text}` shapes.
 - "Import recipe from a URL" calls `POST /recipes/import`, which scrapes JSON-LD recipe data from the page and saves it directly — it only works on pages that publish `schema.org/Recipe` structured data.
 - Updating or deleting your account requires your current password, matching the backend's re-auth checks.

@@ -1,5 +1,5 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
-const TOKEN_KEY = "sift_token";
+const TOKEN_KEY = "clarify_token";
 
 export interface Tag {
   id: number;
@@ -100,7 +100,7 @@ export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
 
-/** Persists the access token to `localStorage` under `sift_token`. */
+/** Persists the access token to `localStorage` under `clarify_token`. */
 export function setToken(token: string) {
   localStorage.setItem(TOKEN_KEY, token);
 }

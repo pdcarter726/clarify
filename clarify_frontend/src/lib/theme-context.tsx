@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 
 type Theme = "light" | "dark";
 
-const STORAGE_KEY = "sift_theme";
+const STORAGE_KEY = "clarify_theme";
 
 interface ThemeContextValue {
   theme: Theme;
@@ -19,7 +19,7 @@ function applyTheme(theme: Theme) {
 
 /**
  * Owns the light/dark theme: on mount, hydrates from `localStorage`
- * ("sift_theme") or falls back to the OS `prefers-color-scheme`, then
+ * ("clarify_theme") or falls back to the OS `prefers-color-scheme`, then
  * toggles the `dark` class on `<html>` and persists future changes back to
  * `localStorage` via `toggleTheme`.
  */

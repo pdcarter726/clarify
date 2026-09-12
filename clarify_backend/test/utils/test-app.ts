@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
 
-export const TEST_EMAIL_DOMAIN = 'e2e-test.sift.invalid';
+export const TEST_EMAIL_DOMAIN = 'e2e-test.clarify.invalid';
 
 export async function createTestApp(): Promise<INestApplication> {
   const moduleRef = await Test.createTestingModule({

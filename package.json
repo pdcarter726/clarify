@@ -1,5 +1,5 @@
 {
-  "name": "sift",
+  "name": "clarify",
   "private": true,
   "dependencies": {
     "@prisma/client": "^7.9.1",

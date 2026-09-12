@@ -1,5 +1,5 @@
 const API_BASE = 'http://localhost:3000';
-const TOKEN_KEY = 'sift_token';
+const TOKEN_KEY = 'clarify_token';
 
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 const PASSWORD_HINT =

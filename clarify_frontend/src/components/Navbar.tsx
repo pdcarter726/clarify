@@ -35,7 +35,7 @@ export default function Navbar() {
         <Link href={user ? "/recipes" : "/"} className="flex items-center gap-2">
           <span className="text-xl">🥄</span>
           <span className="bg-gradient-to-r from-orange-600 to-rose-500 bg-clip-text text-lg font-bold tracking-tight text-transparent dark:from-orange-400 dark:to-rose-300">
-            Sift
+            Clarify
           </span>
         </Link>
 
