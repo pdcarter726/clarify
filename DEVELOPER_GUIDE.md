@@ -29,7 +29,7 @@ Built with NestJS. Each feature is its own module under `src/`:
 | `users` | `/users` | `GET/PATCH/DELETE /users/me` (email, password, account deletion) |
 | `recipes` | `/recipes` | Recipe CRUD, tag filtering, `POST /recipes/import`, `POST /recipes/:id/nutrition` |
 | `tags` | `/tags` | Tag CRUD, attached to recipes via a join table |
-| `extraction` | `/extraction` | Scrapes `schema.org/Recipe` JSON-LD from a URL (used by recipe import) |
+| `extraction` | `/extraction` | Scrapes recipes from a URL (used by recipe import): `schema.org/Recipe` JSON-LD on recipe sites, or the description of a YouTube/TikTok/Instagram post (following a linked recipe page if needed). Plain HTTP first, headless Chromium (playwright-core) when a site blocks it |
 | `nutrition` | — | Not a controller; called by `recipes` to fetch calorie/macro data from USDA FoodData Central |
 | `prisma` | — | Wraps `PrismaClient` as an injectable `PrismaService` |
 | `health` | `/healthz` | Unauthenticated uptime check; pings the database, returns 200 or 503 |
@@ -55,6 +55,9 @@ Defined in `prisma/schema.prisma`, migrated with Prisma Migrate:
 | `JWT_EXPIRES_IN` | Token lifetime, e.g. `1d` |
 | `PORT` | API port (defaults to `3000`) |
 | `USDA_FDC_API_KEY` | Optional, free key from [fdc.nal.usda.gov/api-key-signup](https://fdc.nal.usda.gov/api-key-signup); without it `POST /recipes/:id/nutrition` returns 503 |
+| `SCRAPER_BROWSER` | Optional, default on. Recipe import retries in headless Chromium when a site blocks plain HTTP (403/429/503 or a bot-check page). Set to `off` on hosts without Chromium; blocked sites then fail with a 400 |
+
+Chromium for local development: `npx playwright-core install chromium`. For deployment, `clarify_backend/Dockerfile` builds on the Playwright base image, which already includes Chromium and its system libraries; point Render/Railway/Fly at that Dockerfile. Chromium needs roughly 300-500 MB of RAM while a page loads, so the smallest instance sizes may run out of memory. The base image tag must match the `playwright-core` version in `package.json`.
 
 ### Common commands
 

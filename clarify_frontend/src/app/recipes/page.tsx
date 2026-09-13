@@ -91,10 +91,10 @@ function RecipesPageContent() {
           <input
             type="url"
             required
-            placeholder="Import from URL"
+            placeholder="Recipe, YouTube, TikTok or Instagram URL"
             value={importUrl}
             onChange={(e) => setImportUrl(e.target.value)}
-            className={`${inputClass} w-64`}
+            className={`${inputClass} w-80`}
           />
           <button type="submit" disabled={importing} className={secondaryButtonClass}>
             {importing ? "Importing…" : "Import"}

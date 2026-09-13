@@ -20,7 +20,7 @@ Start the backend first (`../clarify_backend`, `npm run start:dev`) so auth and 
 - `src/lib/auth-context.tsx` — React context holding the current user and JWT (stored in `localStorage`), used by `ProtectedRoute`.
 - `src/lib/scale.ts` — ingredient quantity scaling (1x/2x/3x/custom), including fraction parsing.
 - `src/app/login` — combined login/signup + a guest "preview a recipe URL" panel (no account required).
-- `src/app/recipes` — recipe list with tag filtering (AND across selected tags) and import-from-URL.
+- `src/app/recipes` — recipe list with tag filtering (AND across selected tags) and import from a recipe site or a YouTube/TikTok/Instagram post URL.
 - `src/app/recipes/new`, `src/app/recipes/[id]` — create/edit recipe form (ingredients, instructions, tags).
 - `src/app/account` — update email/password, delete account.
 

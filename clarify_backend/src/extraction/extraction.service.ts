@@ -1,138 +1,146 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import * as cheerio from 'cheerio';
+import { cleanTitle, parseRecipeDescription } from './description-parser';
+import { ExtractedInstruction, ExtractedRecipe } from './extraction.types';
+import { parseIngredientLine } from './ingredient-parser';
+import { PageFetcherService } from './page-fetcher.service';
 import {
-  ExtractedIngredient,
-  ExtractedInstruction,
-  ExtractedRecipe,
-} from './extraction.types';
+  PLATFORM_LABELS,
+  VideoPlatform,
+  canonicalVideoUrl,
+  detectVideoPlatform,
+  parseVideoPage,
+  platformRequestHeaders,
+} from './video-sources';
 
-const UNITS = [
-  'cups',
-  'cup',
-  'tablespoons',
-  'tablespoon',
-  'tbsp',
-  'teaspoons',
-  'teaspoon',
-  'tsp',
-  'ounces',
-  'ounce',
-  'oz',
-  'pounds',
-  'pound',
-  'lbs',
-  'lb',
-  'grams',
-  'gram',
-  'g',
-  'kilograms',
-  'kilogram',
-  'kg',
-  'milliliters',
-  'milliliter',
-  'ml',
-  'liters',
-  'liter',
-  'l',
-  'pinches',
-  'pinch',
-  'dashes',
-  'dash',
-  'cloves',
-  'clove',
-  'cans',
-  'can',
-  'packages',
-  'package',
-  'slices',
-  'slice',
-  'sticks',
-  'stick',
+// Mirrors the recipe table's column sizes.
+const TITLE_MAX = 255;
+const SHORT_FIELD_MAX = 50;
+const URL_MAX = 2048;
+
+// How many links from a video description to try as full recipe pages.
+const MAX_LINKED_PAGES = 3;
+const NON_RECIPE_LINK_DOMAINS = [
+  'youtube.com',
+  'youtu.be',
+  'tiktok.com',
+  'instagram.com',
+  'facebook.com',
+  'twitter.com',
+  'x.com',
+  'threads.net',
+  'pinterest.com',
+  'amazon.com',
+  'amzn.to',
+  'spotify.com',
+  'patreon.com',
+  'discord.gg',
+  'twitch.tv',
+  'linktr.ee',
 ];
 
-const QUANTITY_RE =
-  /^(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?(?:\s*-\s*\d+(?:\.\d+)?)?)\s*/;
-
-// Unicode vulgar fractions (as commonly used on recipe sites, e.g. "1½ cups")
-// aren't digits, so QUANTITY_RE can't see them. Normalize to ASCII "n/d" first.
-const UNICODE_FRACTIONS: Record<string, string> = {
-  '¼': '1/4',
-  '½': '1/2',
-  '¾': '3/4',
-  '⅓': '1/3',
-  '⅔': '2/3',
-  '⅕': '1/5',
-  '⅖': '2/5',
-  '⅗': '3/5',
-  '⅘': '4/5',
-  '⅙': '1/6',
-  '⅚': '5/6',
-  '⅛': '1/8',
-  '⅜': '3/8',
-  '⅝': '5/8',
-  '⅞': '7/8',
-};
-
-// Bot protection on many recipe sites (e.g. Cloudflare on allrecipes.com)
-// answers 403 to requests that don't look like they came from a browser.
-const FETCH_HEADERS = {
-  'User-Agent':
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-  Accept:
-    'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-  'Accept-Language': 'en-US,en;q=0.9',
-};
-
-function normalizeUnicodeFractions(text: string): string {
-  // A fraction glyph is often glued to a whole number ("1½"), so a preceding
-  // digit needs a space inserted or "1" + "1/2" would merge into "11/2".
-  return text.replace(
-    /(\d)?([¼½¾⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞])/g,
-    (_, digit: string | undefined, ch: string) =>
-      digit ? `${digit} ${UNICODE_FRACTIONS[ch]}` : UNICODE_FRACTIONS[ch],
-  );
-}
-
 /**
- * Scrapes a recipe page and extracts structured recipe data from its
- * schema.org JSON-LD (`@type: "Recipe"`), including best-effort parsing
- * of ingredient quantity/unit/name from free-text lines.
+ * Scrapes recipes from URLs. Recipe websites are read from their schema.org
+ * JSON-LD (`@type: "Recipe"`); YouTube, TikTok, and Instagram posts are read
+ * from their descriptions, following a linked recipe page when the
+ * description itself doesn't contain the recipe.
  */
 @Injectable()
 export class ExtractionService {
+  constructor(private readonly pageFetcher: PageFetcherService) {}
+
   /**
-   * Fetches `url` and returns the normalized recipe found in its JSON-LD.
-   * @throws NotFoundException if no Recipe node (or no title) is found on the page.
-   * @throws BadRequestException if the URL can't be fetched or returns a non-OK status.
+   * Fetches `url` and returns the normalized recipe found there.
+   * @throws NotFoundException if no recipe (or no title) is found on the page.
+   * @throws BadRequestException if the URL can't be fetched.
    */
   async extractFromUrl(url: string): Promise<ExtractedRecipe> {
-    const html = await this.fetchHtml(url);
+    const platform = detectVideoPlatform(url);
+    return platform
+      ? this.extractFromVideo(url, platform)
+      : this.extractFromRecipePage(url, url);
+  }
+
+  private async extractFromRecipePage(
+    pageUrl: string,
+    sourceUrl: string,
+  ): Promise<ExtractedRecipe> {
+    const { html } = await this.pageFetcher.fetchPage(pageUrl);
     const recipeNode = this.findRecipeNodeInHtml(html);
     if (!recipeNode) {
       throw new NotFoundException('No JSON-LD Recipe data found on the page');
     }
-    return this.normalize(recipeNode, url);
+    return this.normalize(recipeNode, sourceUrl);
   }
 
-  private async fetchHtml(url: string): Promise<string> {
-    let response: Response;
-    try {
-      response = await fetch(url, { headers: FETCH_HEADERS });
-    } catch (error) {
-      throw new BadRequestException(
-        `Failed to fetch URL: ${(error as Error).message}`,
+  private async extractFromVideo(
+    url: string,
+    platform: VideoPlatform,
+  ): Promise<ExtractedRecipe> {
+    const label = PLATFORM_LABELS[platform];
+    const { html } = await this.pageFetcher.fetchPage(
+      canonicalVideoUrl(platform, url),
+      { headers: platformRequestHeaders(platform) },
+    );
+    const post = parseVideoPage(platform, html);
+    if (!post) {
+      throw new NotFoundException(
+        `Couldn't read the description of that ${label} post (it may be private or removed)`,
       );
     }
-    if (!response.ok) {
-      throw new BadRequestException(
-        `Failed to fetch URL: received status ${response.status}`,
+
+    const parsed = parseRecipeDescription(post.description);
+    const isCompleteRecipe =
+      parsed.ingredients.length >= 2 && parsed.instructions.length >= 1;
+    if (!isCompleteRecipe) {
+      const linked = await this.extractFromLinkedPages(parsed.links, url);
+      if (linked) {
+        return {
+          ...linked,
+          imageUrl: linked.imageUrl ?? fitUrl(post.imageUrl),
+        };
+      }
+    }
+    if (parsed.ingredients.length === 0 && parsed.instructions.length === 0) {
+      throw new NotFoundException(
+        `No recipe found in the ${label} description: it has no ingredients or steps, and no linked recipe page`,
       );
     }
-    return response.text();
+
+    // YouTube has real video titles; TikTok/Instagram captions usually open with one.
+    const title =
+      platform === 'youtube'
+        ? (cleanTitle(post.title) ?? parsed.title)
+        : (parsed.title ?? cleanTitle(post.title));
+    return {
+      title: truncate(title ?? `${label} recipe`, TITLE_MAX),
+      sourceUrl: url,
+      imageUrl: fitUrl(post.imageUrl),
+      servings: truncateOptional(parsed.servings, SHORT_FIELD_MAX),
+      prepTime: truncateOptional(parsed.prepTime, SHORT_FIELD_MAX),
+      cookTime: truncateOptional(parsed.cookTime, SHORT_FIELD_MAX),
+      ingredients: parsed.ingredients,
+      instructions: parsed.instructions,
+    };
+  }
+
+  /** Tries description links (most recipe-looking first) as JSON-LD recipe pages. */
+  private async extractFromLinkedPages(
+    links: string[],
+    videoUrl: string,
+  ): Promise<ExtractedRecipe | undefined> {
+    const candidates = links
+      .filter((link) => !isNonRecipeLink(link))
+      .sort((a, b) => Number(/recipe/i.test(b)) - Number(/recipe/i.test(a)))
+      .slice(0, MAX_LINKED_PAGES);
+    for (const link of candidates) {
+      try {
+        return await this.extractFromRecipePage(link, videoUrl);
+      } catch {
+        // Not a recipe page (or unreachable); try the next link.
+      }
+    }
+    return undefined;
   }
 
   private findRecipeNodeInHtml(html: string): Record<string, any> | undefined {
@@ -235,40 +243,14 @@ export class ExtractionService {
       .join(' ');
   }
 
-  private extractIngredients(raw: unknown): ExtractedIngredient[] {
+  private extractIngredients(raw: unknown) {
     const lines = Array.isArray(raw) ? raw : raw ? [raw] : [];
     return lines
       .filter(
         (line): line is string =>
           typeof line === 'string' && line.trim().length > 0,
       )
-      .map((line, index) => this.parseIngredientLine(line.trim(), index));
-  }
-
-  private parseIngredientLine(
-    line: string,
-    position: number,
-  ): ExtractedIngredient {
-    const normalizedLine = normalizeUnicodeFractions(line);
-    const quantityMatch = QUANTITY_RE.exec(normalizedLine);
-    if (!quantityMatch) {
-      return { name: line, position };
-    }
-
-    const quantity = quantityMatch[1];
-    const remainder = normalizedLine.slice(quantityMatch[0].length).trim();
-    const unitMatch = UNITS.find(
-      (unit) =>
-        remainder.toLowerCase() === unit ||
-        remainder.toLowerCase().startsWith(`${unit} `),
-    );
-
-    if (!unitMatch) {
-      return { name: remainder || line, quantity, position };
-    }
-
-    const name = remainder.slice(unitMatch.length).trim();
-    return { name: name || remainder, quantity, unit: unitMatch, position };
+      .map((line, index) => parseIngredientLine(line.trim(), index));
   }
 
   private extractInstructions(raw: unknown): ExtractedInstruction[] {
@@ -304,4 +286,30 @@ export class ExtractionService {
       .filter((text) => text.length > 0)
       .map((text, index) => ({ stepNumber: index + 1, text }));
   }
+}
+
+function isNonRecipeLink(link: string): boolean {
+  try {
+    const host = new URL(link).hostname.toLowerCase();
+    return NON_RECIPE_LINK_DOMAINS.some(
+      (domain) => host === domain || host.endsWith(`.${domain}`),
+    );
+  } catch {
+    return true;
+  }
+}
+
+function truncate(value: string, max: number): string {
+  return value.length > max ? `${value.slice(0, max - 1).trimEnd()}…` : value;
+}
+
+function truncateOptional(
+  value: string | undefined,
+  max: number,
+): string | undefined {
+  return value === undefined ? undefined : truncate(value, max);
+}
+
+function fitUrl(url: string | undefined): string | undefined {
+  return url && url.length <= URL_MAX ? url : undefined;
 }

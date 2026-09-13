@@ -3,6 +3,8 @@
    clearest one-line way to return a resolved promise from a fixture. */
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ExtractionService } from './extraction.service';
+import { PageFetcherService } from './page-fetcher.service';
+import { BrowserPageLoader } from './browser-page-loader';
 
 function htmlWithJsonLd(payload: unknown): string {
   return `<html><head><script type="application/ld+json">${JSON.stringify(
@@ -21,7 +23,9 @@ describe('ExtractionService', () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
-    service = new ExtractionService();
+    service = new ExtractionService(
+      new PageFetcherService(new BrowserPageLoader()),
+    );
   });
 
   afterEach(() => {
