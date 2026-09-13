@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ExtractedRecipe, Recipe } from "@/lib/api";
 import { formatServings, parseServingsCount, scaleQuantity, sourceHostname } from "@/lib/scale";
+import CookModeToggle from "@/components/CookModeToggle";
 import NutritionLabel from "@/components/NutritionLabel";
 
 interface RecipeCardProps {
@@ -129,7 +130,10 @@ export default function RecipeCard({ recipe, onCalculateNutrition }: RecipeCardP
   return (
     <article className="flex flex-col overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-md shadow-orange-900/5 dark:border-white/10 dark:bg-white/5 dark:shadow-none">
       <div className="flex flex-col gap-4 p-6 pb-0">
-        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">{recipe.title}</h2>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">{recipe.title}</h2>
+          <CookModeToggle />
+        </div>
 
         {(metaParts.length > 0 || recipe.sourceUrl) && (
           <div className="flex flex-wrap gap-1.5">
