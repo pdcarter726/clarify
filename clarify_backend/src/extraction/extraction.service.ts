@@ -77,6 +77,16 @@ const UNICODE_FRACTIONS: Record<string, string> = {
   '⅞': '7/8',
 };
 
+// Bot protection on many recipe sites (e.g. Cloudflare on allrecipes.com)
+// answers 403 to requests that don't look like they came from a browser.
+const FETCH_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+  Accept:
+    'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9',
+};
+
 function normalizeUnicodeFractions(text: string): string {
   // A fraction glyph is often glued to a whole number ("1½"), so a preceding
   // digit needs a space inserted or "1" + "1/2" would merge into "11/2".
@@ -111,7 +121,7 @@ export class ExtractionService {
   private async fetchHtml(url: string): Promise<string> {
     let response: Response;
     try {
-      response = await fetch(url);
+      response = await fetch(url, { headers: FETCH_HEADERS });
     } catch (error) {
       throw new BadRequestException(
         `Failed to fetch URL: ${(error as Error).message}`,

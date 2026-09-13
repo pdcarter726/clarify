@@ -29,6 +29,26 @@ describe('ExtractionService', () => {
     jest.restoreAllMocks();
   });
 
+  describe('fetchHtml', () => {
+    it('sends browser-like headers so bot protection does not 403 the request', async () => {
+      mockFetch({
+        ok: true,
+        status: 200,
+        text: async () => htmlWithJsonLd({ '@type': 'Recipe', name: 'Soup' }),
+      });
+
+      await service.extractFromUrl('https://example.com');
+
+      const [url, init] = (global.fetch as jest.Mock).mock.calls[0] as [
+        string,
+        { headers: Record<string, string> },
+      ];
+      expect(url).toBe('https://example.com');
+      expect(init.headers['User-Agent']).toContain('Mozilla/5.0');
+      expect(init.headers.Accept).toContain('text/html');
+    });
+  });
+
   describe('fetchHtml failures', () => {
     it('throws BadRequestException when fetch itself rejects', async () => {
       global.fetch = jest.fn().mockRejectedValue(new Error('network down'));
