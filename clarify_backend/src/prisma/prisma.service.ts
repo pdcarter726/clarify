@@ -1,9 +1,9 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import { PrismaMariaDb } from '@prisma/adapter-mariadb';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 /**
- * Prisma client bound to the MariaDB adapter (DATABASE_URL), connected on
+ * Prisma client bound to the PostgreSQL adapter (DATABASE_URL), connected on
  * module init and cleanly disconnected on module destroy. Inject this to
  * access all Prisma model delegates (recipe, user, tag, etc.).
  */
@@ -14,7 +14,7 @@ export class PrismaService
 {
   constructor() {
     super({
-      adapter: new PrismaMariaDb(process.env.DATABASE_URL as string),
+      adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
     });
   }
 

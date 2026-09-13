@@ -1,5 +1,5 @@
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
 }
 
 generator client {
@@ -7,7 +7,7 @@ generator client {
 }
 
 model User {
-  id           Int      @id @default(autoincrement()) @db.UnsignedInt
+  id           Int      @id @default(autoincrement())
   email        String   @unique @db.VarChar(255)
   passwordHash String   @map("password_hash") @db.VarChar(255)
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(0)
@@ -17,8 +17,8 @@ model User {
 }
 
 model Recipe {
-  id                Int           @id @default(autoincrement()) @db.UnsignedInt
-  userId            Int           @map("user_id") @db.UnsignedInt
+  id                Int           @id @default(autoincrement())
+  userId            Int           @map("user_id")
   user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   title             String        @db.VarChar(255)
   sourceUrl         String?       @map("source_url") @db.VarChar(2048)
@@ -51,23 +51,23 @@ model Recipe {
 }
 
 model Ingredient {
-  id       Int     @id @default(autoincrement()) @db.UnsignedInt
-  recipeId Int     @map("recipe_id") @db.UnsignedInt
+  id       Int     @id @default(autoincrement())
+  recipeId Int     @map("recipe_id")
   recipe   Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   name     String  @db.VarChar(255)
   quantity String? @db.VarChar(50)
   unit     String? @db.VarChar(50)
-  position Int     @default(0) @db.UnsignedSmallInt
+  position Int     @default(0) @db.SmallInt
 
   @@index([recipeId], map: "idx_ingredients_recipe_id")
   @@map("ingredients")
 }
 
 model Instruction {
-  id         Int    @id @default(autoincrement()) @db.UnsignedInt
-  recipeId   Int    @map("recipe_id") @db.UnsignedInt
+  id         Int    @id @default(autoincrement())
+  recipeId   Int    @map("recipe_id")
   recipe     Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  stepNumber Int    @map("step_number") @db.UnsignedSmallInt
+  stepNumber Int    @map("step_number") @db.SmallInt
   text       String @db.Text
 
   @@index([recipeId], map: "idx_instructions_recipe_id")
@@ -75,7 +75,7 @@ model Instruction {
 }
 
 model Tag {
-  id         Int         @id @default(autoincrement()) @db.UnsignedInt
+  id         Int         @id @default(autoincrement())
   name       String      @unique @db.VarChar(100)
   recipeTags RecipeTag[]
 
@@ -83,12 +83,12 @@ model Tag {
 }
 
 model RecipeTag {
-  recipeId Int    @map("recipe_id") @db.UnsignedInt
-  tagId    Int    @map("tag_id") @db.UnsignedInt
+  recipeId Int    @map("recipe_id")
+  tagId    Int    @map("tag_id")
   recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   tag      Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([recipeId, tagId])
-  @@index([tagId], map: "tag_id")
+  @@index([tagId], map: "idx_recipe_tags_tag_id")
   @@map("recipe_tags")
 }

@@ -1,28 +1,28 @@
 # Clarify
 
-A recipe manager: a NestJS + Prisma + MySQL API (`clarify_backend/`) with JWT auth and recipe import from a URL, plus a Next.js frontend to use it (`clarify_frontend/`).
+A recipe manager: a NestJS + Prisma + PostgreSQL API (`clarify_backend/`) with JWT auth and recipe import from a URL, plus a Next.js frontend to use it (`clarify_frontend/`).
 
 ## Prerequisites
 
 - Node.js and npm
-- MySQL (or MariaDB) server running locally
+- PostgreSQL server running locally
 
-## 1. Start MySQL
+## 1. Start PostgreSQL
 
-Make sure your MySQL/MariaDB server is running. On Windows with the MySQL80 service:
+Make sure your PostgreSQL server is running. On Windows the installer registers a service named like `postgresql-x64-17`:
 
 ```
-net start MySQL80
+net start postgresql-x64-17
 ```
 
-(Or start it however you normally do — Services app, XAMPP, Docker, etc.)
+(Or start it however you normally do — Services app, Docker, etc. For example: `docker run -d --name clarify-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:17`.)
 
 ## 2. Create the database
 
-Connect with your MySQL client and create an empty database:
+Connect with `psql` (or pgAdmin) and create an empty database:
 
 ```sql
-CREATE DATABASE IF NOT EXISTS clarify;
+CREATE DATABASE clarify;
 ```
 
 ## 3. Configure the backend
@@ -38,7 +38,7 @@ cp .env.example .env
 ```
 
 Edit `.env`:
-- `DATABASE_URL` — your MySQL connection string, e.g. `mysql://root:yourpassword@localhost:3306/clarify?allowPublicKeyRetrieval=true` (that query param is required against MySQL 8+'s default auth plugin over a non-SSL local connection)
+- `DATABASE_URL` — your PostgreSQL connection string, e.g. `postgresql://postgres:yourpassword@localhost:5432/clarify?schema=public` (URL-encode any special characters in the password)
 - `JWT_SECRET` — a random secret. Generate one with:
   ```
   node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"

@@ -121,10 +121,21 @@ export class RecipesService {
             ? [
                 {
                   OR: [
-                    { title: { contains: trimmedQuery } },
+                    // Postgres matching is case-sensitive by default.
+                    {
+                      title: {
+                        contains: trimmedQuery,
+                        mode: 'insensitive' as const,
+                      },
+                    },
                     {
                       ingredients: {
-                        some: { name: { contains: trimmedQuery } },
+                        some: {
+                          name: {
+                            contains: trimmedQuery,
+                            mode: 'insensitive' as const,
+                          },
+                        },
                       },
                     },
                   ],

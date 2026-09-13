@@ -7,9 +7,9 @@ This guide covers the project layout, how the two halves talk to each other, and
 ## Architecture
 
 ```
-clarify_backend/    NestJS + Prisma + MySQL API (JWT auth, recipe CRUD, URL import, nutrition lookup)
+clarify_backend/    NestJS + Prisma + PostgreSQL API (JWT auth, recipe CRUD, URL import, nutrition lookup)
 clarify_frontend/   Next.js (App Router) + React + TypeScript + Tailwind client
-clarifySetup.sql    Reference DDL for the MySQL schema (Prisma migrations are the source of truth)
+clarifySetup.sql    Reference DDL for the PostgreSQL schema (Prisma migrations are the source of truth)
 ```
 
 The backend and frontend are independent npm projects with their own `package.json`, run as separate processes:
@@ -49,7 +49,7 @@ Defined in `prisma/schema.prisma`, migrated with Prisma Migrate:
 
 | Variable | Purpose |
 |---|---|
-| `DATABASE_URL` | MySQL connection string, e.g. `mysql://root:pw@localhost:3306/clarify?allowPublicKeyRetrieval=true` (the query param is required against MySQL 8+'s default `caching_sha2_password` auth plugin over a non-SSL connection) |
+| `DATABASE_URL` | PostgreSQL connection string, e.g. `postgresql://postgres:pw@localhost:5432/clarify?schema=public` |
 | `JWT_SECRET` | Random secret used to sign auth tokens |
 | `JWT_EXPIRES_IN` | Token lifetime, e.g. `1d` |
 | `PORT` | API port (defaults to `3000`) |
@@ -97,7 +97,7 @@ npm run lint
 
 ## Working across both halves
 
-1. Start MySQL, then `clarify_backend` (`npm run start:dev`), then `clarify_frontend` (`npm run dev`).
+1. Start PostgreSQL, then `clarify_backend` (`npm run start:dev`), then `clarify_frontend` (`npm run dev`).
 2. Changes to `prisma/schema.prisma` need a migration (`npx prisma migrate dev`) and a client regen (`npx prisma generate`) before the backend picks them up.
 3. New/changed backend routes should be reflected in `clarify_frontend/src/lib/api.ts` — it's the single place the frontend knows about the API shape.
 4. The backend has CORS enabled for all origins, so the frontend (or the `legacy-static` prototype) can be served from any port during development.

@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import { IsEmail, IsString, Matches, MinLength } from 'class-validator';
 
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
@@ -9,6 +10,10 @@ const PASSWORD_MESSAGE =
  * satisfy PASSWORD_PATTERN (upper + lower + digit + special character).
  */
 export class CreateUserDto {
+  // Postgres compares strings case-sensitively, so store emails lowercased.
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim().toLowerCase() : value,
+  )
   @IsEmail()
   email: string;
 

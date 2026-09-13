@@ -350,8 +350,14 @@ describe('RecipesService', () => {
           AND: [
             {
               OR: [
-                { title: { contains: 'chicken' } },
-                { ingredients: { some: { name: { contains: 'chicken' } } } },
+                { title: { contains: 'chicken', mode: 'insensitive' } },
+                {
+                  ingredients: {
+                    some: {
+                      name: { contains: 'chicken', mode: 'insensitive' },
+                    },
+                  },
+                },
               ],
             },
           ],
@@ -384,8 +390,14 @@ describe('RecipesService', () => {
             { recipeTags: { some: { tag: { name: 'dinner' } } } },
             {
               OR: [
-                { title: { contains: 'chicken' } },
-                { ingredients: { some: { name: { contains: 'chicken' } } } },
+                { title: { contains: 'chicken', mode: 'insensitive' } },
+                {
+                  ingredients: {
+                    some: {
+                      name: { contains: 'chicken', mode: 'insensitive' },
+                    },
+                  },
+                },
               ],
             },
           ],
