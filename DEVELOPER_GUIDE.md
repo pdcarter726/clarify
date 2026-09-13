@@ -32,6 +32,7 @@ Built with NestJS. Each feature is its own module under `src/`:
 | `extraction` | `/extraction` | Scrapes `schema.org/Recipe` JSON-LD from a URL (used by recipe import) |
 | `nutrition` | — | Not a controller; called by `recipes` to fetch calorie/macro data from USDA FoodData Central |
 | `prisma` | — | Wraps `PrismaClient` as an injectable `PrismaService` |
+| `health` | `/healthz` | Unauthenticated uptime check; pings the database, returns 200 or 503 |
 
 Auth is JWT-based (`@nestjs/jwt` + `passport-jwt`); protected routes use a guard that reads the bearer token and attaches the current user.
 

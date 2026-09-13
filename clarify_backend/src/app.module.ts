@@ -5,10 +5,11 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { ExtractionModule } from './extraction/extraction.module';
 import { TagsModule } from './tags/tags.module';
+import { HealthModule } from './health/health.module';
 
 /**
  * Root application module. Wires together the Prisma database layer, auth,
- * and the recipes/users/extraction/tags feature modules.
+ * the recipes/users/extraction/tags feature modules, and the health check.
  */
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { TagsModule } from './tags/tags.module';
     AuthModule,
     ExtractionModule,
     TagsModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
