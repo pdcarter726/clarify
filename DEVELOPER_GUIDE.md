@@ -29,7 +29,7 @@ Built with NestJS. Each feature is its own module under `src/`:
 | `users` | `/users` | `GET/PATCH/DELETE /users/me` (email, password, account deletion) |
 | `recipes` | `/recipes` | Recipe CRUD, tag filtering, `POST /recipes/import`, `POST /recipes/:id/nutrition` |
 | `tags` | `/tags` | Tag CRUD, attached to recipes via a join table |
-| `extraction` | `/extraction` | Scrapes recipes from a URL (used by recipe import): `schema.org/Recipe` JSON-LD on recipe sites, or the description of a YouTube/TikTok/Instagram post (following a linked recipe page if needed). Plain HTTP first, headless Chromium (playwright-core) when a site blocks it |
+| `extraction` | `/extraction` | Scrapes recipes from a URL (used by recipe import): `schema.org/Recipe` JSON-LD on recipe sites, or a YouTube/TikTok/Instagram post: its description, then the pinned comment (YouTube/TikTok; Instagram comments need a login), then a linked recipe page. Plain HTTP first, headless Chromium (playwright-core) when a site blocks it |
 | `nutrition` | — | Not a controller; called by `recipes` to fetch calorie/macro data from USDA FoodData Central |
 | `prisma` | — | Wraps `PrismaClient` as an injectable `PrismaService` |
 | `health` | `/healthz` | Unauthenticated uptime check; pings the database, returns 200 or 503 |

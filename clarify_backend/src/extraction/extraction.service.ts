@@ -1,9 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import * as cheerio from 'cheerio';
-import { cleanTitle, parseRecipeDescription } from './description-parser';
+import {
+  ParsedDescription,
+  cleanTitle,
+  parseRecipeDescription,
+} from './description-parser';
 import { ExtractedInstruction, ExtractedRecipe } from './extraction.types';
 import { parseIngredientLine } from './ingredient-parser';
 import { PageFetcherService } from './page-fetcher.service';
+import {
+  fetchTikTokPinnedComment,
+  fetchYouTubePinnedComment,
+} from './pinned-comments';
 import {
   PLATFORM_LABELS,
   VideoPlatform,
@@ -42,8 +50,8 @@ const NON_RECIPE_LINK_DOMAINS = [
 /**
  * Scrapes recipes from URLs. Recipe websites are read from their schema.org
  * JSON-LD (`@type: "Recipe"`); YouTube, TikTok, and Instagram posts are read
- * from their descriptions, following a linked recipe page when the
- * description itself doesn't contain the recipe.
+ * from their descriptions, then (YouTube/TikTok) the pinned comment, then a
+ * linked recipe page when neither contains the recipe.
  */
 @Injectable()
 export class ExtractionService {
@@ -78,7 +86,7 @@ export class ExtractionService {
     platform: VideoPlatform,
   ): Promise<ExtractedRecipe> {
     const label = PLATFORM_LABELS[platform];
-    const { html } = await this.pageFetcher.fetchPage(
+    const { html, finalUrl } = await this.pageFetcher.fetchPage(
       canonicalVideoUrl(platform, url),
       { headers: platformRequestHeaders(platform) },
     );
@@ -89,10 +97,20 @@ export class ExtractionService {
       );
     }
 
-    const parsed = parseRecipeDescription(post.description);
-    const isCompleteRecipe =
-      parsed.ingredients.length >= 2 && parsed.instructions.length >= 1;
-    if (!isCompleteRecipe) {
+    // Sources in order: description, then the pinned comment (where many
+    // creators post the recipe), then any recipe page linked from either.
+    let parsed = parseRecipeDescription(post.description);
+    if (!isCompleteRecipe(parsed)) {
+      const pinnedComment = await this.fetchPinnedComment(
+        platform,
+        html,
+        finalUrl,
+      );
+      if (pinnedComment) {
+        parsed = mergeParsed(parsed, parseRecipeDescription(pinnedComment));
+      }
+    }
+    if (!isCompleteRecipe(parsed)) {
       const linked = await this.extractFromLinkedPages(parsed.links, url);
       if (linked) {
         return {
@@ -103,7 +121,7 @@ export class ExtractionService {
     }
     if (parsed.ingredients.length === 0 && parsed.instructions.length === 0) {
       throw new NotFoundException(
-        `No recipe found in the ${label} description: it has no ingredients or steps, and no linked recipe page`,
+        `No recipe found in the ${label} description or pinned comment, and no linked recipe page`,
       );
     }
 
@@ -122,6 +140,27 @@ export class ExtractionService {
       ingredients: parsed.ingredients,
       instructions: parsed.instructions,
     };
+  }
+
+  /**
+   * Best-effort pinned comment text for the post; undefined when unavailable.
+   * `finalUrl` is the post URL after redirects (TikTok short links resolve to
+   * the URL carrying the post id).
+   */
+  private fetchPinnedComment(
+    platform: VideoPlatform,
+    html: string,
+    finalUrl: string,
+  ): Promise<string | undefined> {
+    switch (platform) {
+      case 'youtube':
+        return fetchYouTubePinnedComment(html);
+      case 'tiktok':
+        return fetchTikTokPinnedComment(finalUrl);
+      default:
+        // Instagram only shows comments to logged-in users.
+        return Promise.resolve(undefined);
+    }
   }
 
   /** Tries description links (most recipe-looking first) as JSON-LD recipe pages. */
@@ -286,6 +325,31 @@ export class ExtractionService {
       .filter((text) => text.length > 0)
       .map((text, index) => ({ stepNumber: index + 1, text }));
   }
+}
+
+function isCompleteRecipe(parsed: ParsedDescription): boolean {
+  return parsed.ingredients.length >= 2 && parsed.instructions.length >= 1;
+}
+
+/**
+ * Combines a description with its pinned comment: whichever has more
+ * ingredients (or steps) supplies that list, and the description wins ties
+ * and single-value fields.
+ */
+function mergeParsed(
+  description: ParsedDescription,
+  comment: ParsedDescription,
+): ParsedDescription {
+  const longer = <T>(a: T[], b: T[]) => (b.length > a.length ? b : a);
+  return {
+    title: description.title ?? comment.title,
+    servings: description.servings ?? comment.servings,
+    prepTime: description.prepTime ?? comment.prepTime,
+    cookTime: description.cookTime ?? comment.cookTime,
+    ingredients: longer(description.ingredients, comment.ingredients),
+    instructions: longer(description.instructions, comment.instructions),
+    links: [...new Set([...description.links, ...comment.links])],
+  };
 }
 
 function isNonRecipeLink(link: string): boolean {

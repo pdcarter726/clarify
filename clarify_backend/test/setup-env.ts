@@ -1,8 +1,7 @@
 import 'dotenv/config';
 
-// Recipe create/update now trigger automatic nutrition calculation, which
-// would otherwise make e2e tests depend on real network access to USDA
-// FoodData Central. Unset the key so it deterministically takes the fast
-// "not configured" skip path instead (real behavior is covered by
-// NutritionService's own unit tests).
+// Nutrition is only calculated on request (POST /recipes/:id/nutrition), but
+// keep e2e tests from ever depending on real network access to USDA
+// FoodData Central: with the key unset, that endpoint deterministically
+// returns 503 (real behavior is covered by NutritionService's unit tests).
 delete process.env.USDA_FDC_API_KEY;

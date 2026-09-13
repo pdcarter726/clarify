@@ -121,3 +121,39 @@ describe('cleanTitle', () => {
     expect(cleanTitle(undefined)).toBeUndefined();
   });
 });
+
+describe('parseRecipeDescription (real-world captions)', () => {
+  it('does not turn a trailing hashtag caption into a step', () => {
+    // From a YouTube Short whose description repeats its title with hashtags.
+    const parsed = parseRecipeDescription(
+      [
+        'HAWAIIAN PIZZA BITES',
+        '',
+        'Ingredients:',
+        '1 can @pillsbury  crescent rolls',
+        'pizza sauce',
+        '',
+        'Instructions:',
+        'Cut 12 even rounds of crescent roll dough. Bake at 375° for 12–16 minutes. 😋',
+        '',
+        'viral hawaiian pizza bites recipe 🍍🍕 #cooking #recipe #food #shorts',
+      ].join('\n'),
+    );
+
+    expect(parsed.title).toBe('HAWAIIAN PIZZA BITES');
+    expect(parsed.ingredients).toHaveLength(2);
+    expect(parsed.instructions).toEqual([
+      {
+        stepNumber: 1,
+        text: 'Cut 12 even rounds of crescent roll dough. Bake at 375° for 12–16 minutes.',
+      },
+    ]);
+  });
+
+  it('keeps a quantified ingredient that happens to carry a hashtag', () => {
+    const parsed = parseRecipeDescription(
+      'Ingredients:\n2 eggs #protein\n1 cup oats',
+    );
+    expect(parsed.ingredients.map((i) => i.name)).toEqual(['eggs', 'oats']);
+  });
+});

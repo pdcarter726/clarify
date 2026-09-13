@@ -215,7 +215,7 @@ function safeJsonParse(text: string): unknown {
   }
 }
 
-function dig(value: unknown, ...path: string[]): unknown {
+export function dig(value: unknown, ...path: string[]): unknown {
   let current = value;
   for (const key of path) {
     if (!current || typeof current !== 'object') return undefined;
@@ -224,7 +224,7 @@ function dig(value: unknown, ...path: string[]): unknown {
   return current;
 }
 
-function asText(value: unknown): string | undefined {
+export function asText(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim().length > 0
     ? value
     : undefined;

@@ -1,15 +1,35 @@
 import {
   BadRequestException,
   Injectable,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExtractionService } from '../extraction/extraction.service';
 import { TagsService } from '../tags/tags.service';
 import { NutritionService } from '../nutrition/nutrition.service';
+import { NutritionTotals } from '../nutrition/nutrition.types';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { UpdateRecipeDto } from './dto/update-recipe.dto';
+
+// Nutrition is only calculated when the user asks for it (calculateNutrition),
+// so replacing a recipe's ingredients clears the old totals instead of
+// leaving numbers that no longer match the ingredient list.
+const CLEARED_NUTRITION: Record<keyof NutritionTotals, null> = {
+  calories: null,
+  proteinGrams: null,
+  fatGrams: null,
+  saturatedFatGrams: null,
+  transFatGrams: null,
+  cholesterolMg: null,
+  sodiumMg: null,
+  carbGrams: null,
+  fiberGrams: null,
+  sugarGrams: null,
+  vitaminDMcg: null,
+  calciumMg: null,
+  ironMg: null,
+  potassiumMg: null,
+};
 
 /**
  * Owns recipe CRUD plus the two features that compose other services:
@@ -18,8 +38,6 @@ import { UpdateRecipeDto } from './dto/update-recipe.dto';
  */
 @Injectable()
 export class RecipesService {
-  private readonly logger = new Logger(RecipesService.name);
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly extractionService: ExtractionService,
@@ -44,46 +62,13 @@ export class RecipesService {
     return { ...rest, tags: recipeTags.map((recipeTag) => recipeTag.tag) };
   }
 
-  /**
-   * Best-effort nutrition calculation run automatically after a recipe is
-   * created/imported or its ingredients are edited. Unlike the explicit
-   * `calculateNutrition` flow, failures here (no ingredients, USDA not
-   * configured, a lookup error) are swallowed rather than thrown — auto-calc
-   * is a convenience, not something that should block saving a recipe.
-   * Returns the recipe with nutrition applied, or `recipe` unchanged if
-   * calculation was skipped/failed.
-   */
-  private async autoCalculateNutrition<
-    T extends { id: number; ingredients: { name: string }[] },
-  >(recipe: T): Promise<T> {
-    if (recipe.ingredients.length === 0) return recipe;
-    try {
-      const nutrition = await this.nutritionService.calculateForIngredients(
-        recipe.ingredients,
-      );
-      // Both call sites pass a recipe fetched with `this.include`, so the
-      // updated result has the same shape as `T` even though the generic
-      // can't express that relationship to the compiler.
-      return (await this.prisma.recipe.update({
-        where: { id: recipe.id },
-        data: nutrition,
-        include: this.include,
-      })) as unknown as T;
-    } catch (error) {
-      this.logger.warn(
-        `Automatic nutrition calculation skipped for recipe ${recipe.id}: ${(error as Error).message}`,
-      );
-      return recipe;
-    }
-  }
-
   /** Scrapes `url` via ExtractionService and saves the extracted data as a new recipe for `userId`. */
   async importFromUrl(userId: number, url: string) {
     const extracted = await this.extractionService.extractFromUrl(url);
     return this.create(userId, extracted);
   }
 
-  /** Creates a recipe with its nested ingredients/instructions and resolves/attaches any named tags, then auto-calculates nutrition. */
+  /** Creates a recipe with its nested ingredients/instructions and resolves/attaches any named tags. Nutrition is left uncalculated. */
   async create(userId: number, createRecipeDto: CreateRecipeDto) {
     const { ingredients, instructions, tags, ...recipeData } = createRecipeDto;
     const tagIds = tags ? await this.tagsService.resolveTagIds(tags) : [];
@@ -99,7 +84,7 @@ export class RecipesService {
       },
       include: this.include,
     });
-    return this.formatRecipe(await this.autoCalculateNutrition(recipe));
+    return this.formatRecipe(recipe);
   }
 
   /** Lists a user's recipes; when given, tag names must ALL match (AND) and `q` matches title or ingredient name. */
@@ -167,8 +152,8 @@ export class RecipesService {
   /**
    * Updates recipe fields. Supplying ingredients/instructions/tags deletes the
    * existing nested rows and recreates them (see inline note) rather than diffing.
-   * Re-runs nutrition calculation when `ingredients` is supplied, since that's
-   * the only field that can change what it should be.
+   * Supplying `ingredients` also clears stored nutrition, since that's the
+   * only field that can change it; the user recalculates on request.
    */
   async update(userId: number, id: number, updateRecipeDto: UpdateRecipeDto) {
     await this.findOne(userId, id);
@@ -180,6 +165,7 @@ export class RecipesService {
       where: { id },
       data: {
         ...recipeData,
+        ...(ingredients ? CLEARED_NUTRITION : {}),
         // Nested collections are order-dependent, so replace them wholesale
         // rather than diffing individual ingredients/instructions.
         ingredients: ingredients
@@ -194,10 +180,7 @@ export class RecipesService {
       },
       include: this.include,
     });
-    const withNutrition = ingredients
-      ? await this.autoCalculateNutrition(recipe)
-      : recipe;
-    return this.formatRecipe(withNutrition);
+    return this.formatRecipe(recipe);
   }
 
   /** Deletes a recipe owned by `userId`; cascades to its ingredients, instructions, and tag links. */

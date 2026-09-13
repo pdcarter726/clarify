@@ -46,9 +46,9 @@ describe('RecipesService', () => {
       normalizeNames: jest.fn(),
       normalize: jest.fn(),
     };
-    // Rejects by default (mirroring "USDA_FDC_API_KEY not configured") so
-    // tests unrelated to nutrition don't need to mock it — auto-calculation
-    // silently no-ops on failure. Tests that care about nutrition override this.
+    // Rejects by default (mirroring "USDA_FDC_API_KEY not configured"); only
+    // the explicit calculateNutrition flow should call it, and those tests
+    // override this.
     nutritionService = {
       calculateForIngredients: jest
         .fn()
@@ -150,117 +150,27 @@ describe('RecipesService', () => {
     });
   });
 
-  describe('automatic nutrition calculation', () => {
+  describe('nutrition is only calculated on request', () => {
     const ingredients = [{ name: 'flour', quantity: '2', unit: 'cups' }];
-    const nutrition = {
-      calories: 200,
-      proteinGrams: 5,
-      fatGrams: 1,
-      carbGrams: 40,
-    };
 
-    it('calculates and persists nutrition after create when ingredients are given', async () => {
+    it('does not calculate nutrition on create', async () => {
       prisma.recipe.create.mockResolvedValue({
         id: 1,
         ingredients,
         recipeTags: [],
-      });
-      nutritionService.calculateForIngredients.mockResolvedValue(nutrition);
-      prisma.recipe.update.mockResolvedValue({
-        id: 1,
-        ingredients,
-        recipeTags: [],
-        ...nutrition,
       });
 
       const result = await service.create(7, {
         title: 'Pancakes',
         ingredients,
       });
-
-      expect(nutritionService.calculateForIngredients).toHaveBeenCalledWith(
-        ingredients,
-      );
-      expect(prisma.recipe.update).toHaveBeenCalledWith({
-        where: { id: 1 },
-        data: nutrition,
-        include,
-      });
-      expect(result).toMatchObject(nutrition);
-    });
-
-    it('skips nutrition calculation on create when no ingredients are given', async () => {
-      prisma.recipe.create.mockResolvedValue({
-        id: 1,
-        ingredients: [],
-        recipeTags: [],
-      });
-
-      await service.create(7, { title: 'Pancakes' });
 
       expect(nutritionService.calculateForIngredients).not.toHaveBeenCalled();
       expect(prisma.recipe.update).not.toHaveBeenCalled();
-    });
-
-    it('still returns the recipe from create when nutrition calculation fails', async () => {
-      prisma.recipe.create.mockResolvedValue({
-        id: 1,
-        ingredients,
-        recipeTags: [],
-      });
-      nutritionService.calculateForIngredients.mockRejectedValue(
-        new Error('USDA down'),
-      );
-
-      const result = await service.create(7, {
-        title: 'Pancakes',
-        ingredients,
-      });
-
       expect(result).toEqual({ id: 1, ingredients, tags: [] });
-      expect(prisma.recipe.update).not.toHaveBeenCalled();
     });
 
-    it('recalculates nutrition on update when ingredients are supplied', async () => {
-      prisma.recipe.findFirst.mockResolvedValue({
-        id: 1,
-        userId: 7,
-        recipeTags: [],
-      });
-      prisma.recipe.update
-        .mockResolvedValueOnce({ id: 1, ingredients, recipeTags: [] })
-        .mockResolvedValueOnce({
-          id: 1,
-          ingredients,
-          recipeTags: [],
-          ...nutrition,
-        });
-      nutritionService.calculateForIngredients.mockResolvedValue(nutrition);
-
-      const result = await service.update(7, 1, { ingredients });
-
-      expect(nutritionService.calculateForIngredients).toHaveBeenCalledWith(
-        ingredients,
-      );
-      expect(prisma.recipe.update).toHaveBeenCalledTimes(2);
-      expect(result).toMatchObject(nutrition);
-    });
-
-    it('does not recalculate nutrition on update when ingredients are not supplied', async () => {
-      prisma.recipe.findFirst.mockResolvedValue({
-        id: 1,
-        userId: 7,
-        recipeTags: [],
-      });
-      prisma.recipe.update.mockResolvedValue({ id: 1, recipeTags: [] });
-
-      await service.update(7, 1, { title: 'New title' });
-
-      expect(nutritionService.calculateForIngredients).not.toHaveBeenCalled();
-      expect(prisma.recipe.update).toHaveBeenCalledTimes(1);
-    });
-
-    it('calculates nutrition for a recipe imported from a URL', async () => {
+    it('does not calculate nutrition for a recipe imported from a URL', async () => {
       extractionService.extractFromUrl.mockResolvedValue({
         title: 'Fixture Pancakes',
         ingredients,
@@ -270,20 +180,53 @@ describe('RecipesService', () => {
         ingredients,
         recipeTags: [],
       });
-      nutritionService.calculateForIngredients.mockResolvedValue(nutrition);
+
+      await service.importFromUrl(7, 'https://example.com');
+
+      expect(nutritionService.calculateForIngredients).not.toHaveBeenCalled();
+      expect(prisma.recipe.update).not.toHaveBeenCalled();
+    });
+
+    it('clears stale nutrition on update when ingredients are replaced', async () => {
+      prisma.recipe.findFirst.mockResolvedValue({
+        id: 1,
+        userId: 7,
+        recipeTags: [],
+      });
       prisma.recipe.update.mockResolvedValue({
         id: 1,
         ingredients,
         recipeTags: [],
-        ...nutrition,
       });
 
-      const result = await service.importFromUrl(7, 'https://example.com');
+      await service.update(7, 1, { ingredients });
 
-      expect(nutritionService.calculateForIngredients).toHaveBeenCalledWith(
-        ingredients,
-      );
-      expect(result).toMatchObject(nutrition);
+      expect(nutritionService.calculateForIngredients).not.toHaveBeenCalled();
+      expect(prisma.recipe.update).toHaveBeenCalledTimes(1);
+      const [{ data }] = prisma.recipe.update.mock.calls[0] as [
+        { data: Record<string, unknown> },
+      ];
+      expect(data).toMatchObject({
+        calories: null,
+        proteinGrams: null,
+        potassiumMg: null,
+      });
+    });
+
+    it('keeps stored nutrition on update when ingredients are not supplied', async () => {
+      prisma.recipe.findFirst.mockResolvedValue({
+        id: 1,
+        userId: 7,
+        recipeTags: [],
+      });
+      prisma.recipe.update.mockResolvedValue({ id: 1, recipeTags: [] });
+
+      await service.update(7, 1, { title: 'New title' });
+
+      const [{ data }] = prisma.recipe.update.mock.calls[0] as [
+        { data: Record<string, unknown> },
+      ];
+      expect(data).not.toHaveProperty('calories');
     });
   });
 
@@ -467,6 +410,21 @@ describe('RecipesService', () => {
         where: { id: 1 },
         data: {
           title: 'New',
+          // New ingredients invalidate any previously calculated nutrition.
+          calories: null,
+          proteinGrams: null,
+          fatGrams: null,
+          saturatedFatGrams: null,
+          transFatGrams: null,
+          cholesterolMg: null,
+          sodiumMg: null,
+          carbGrams: null,
+          fiberGrams: null,
+          sugarGrams: null,
+          vitaminDMcg: null,
+          calciumMg: null,
+          ironMg: null,
+          potassiumMg: null,
           ingredients: {
             deleteMany: {},
             create: [{ name: 'salt', position: 0 }],

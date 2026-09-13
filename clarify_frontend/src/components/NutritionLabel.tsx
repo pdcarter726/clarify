@@ -121,8 +121,7 @@ export default function NutritionLabel({ values, servings }: NutritionLabelProps
       <p className="border-t-4 border-zinc-900 pt-1 text-[11px] leading-tight text-zinc-600 dark:border-white dark:text-zinc-400">
         * The % Daily Value tells you how much a nutrient in a serving of food
         contributes to a daily diet. 2,000 calories a day is used for general
-        nutrition advice. Estimated from USDA FoodData Central; actual values
-        may vary by brand/preparation.
+        nutrition advice.
       </p>
     </div>
   );

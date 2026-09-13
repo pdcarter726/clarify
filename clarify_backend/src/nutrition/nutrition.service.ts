@@ -5,6 +5,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { NutritionIngredientInput, NutritionTotals } from './nutrition.types';
+import { normalizeUnit } from '../extraction/ingredient-parser';
 
 const FDC_BASE_URL = 'https://api.nal.usda.gov/fdc/v1';
 
@@ -759,7 +760,10 @@ export class NutritionService {
       return 2;
     }
 
-    const normalizedUnit = (unit ?? '').trim().toLowerCase();
+    // Canonicalize abbreviations ("Tbsp.", "c.") so they match the unit
+    // tables; unrecognized words ("jars") pass through for containerGrams.
+    const normalizedUnit =
+      normalizeUnit(unit ?? '') ?? (unit ?? '').trim().toLowerCase();
 
     // Amount-less toppings ("mustard", "pickle chips", "special sauce") are a
     // spoonful per serving, not a whole 100g.

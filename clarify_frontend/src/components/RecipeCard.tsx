@@ -7,23 +7,34 @@ import NutritionLabel from "@/components/NutritionLabel";
 
 interface RecipeCardProps {
   recipe: Recipe | ExtractedRecipe;
+  /**
+   * Calculates (or recalculates) nutrition for a saved recipe, resolving
+   * `true` on success. Omitted for unsaved previews, which can't be analyzed,
+   * and which then show no nutrition section at all.
+   */
+  onCalculateNutrition?: () => Promise<boolean>;
 }
+
+const nutritionLinkClass =
+  "text-xs font-medium text-orange-700 hover:text-orange-900 disabled:cursor-wait disabled:opacity-60 dark:text-orange-300 dark:hover:text-orange-200";
 
 /**
  * Full recipe layout: image + ingredients on the left, instructions in the
- * middle, a toggleable nutrition facts label on the right (shown by
- * default). Accepts either a saved `Recipe` or an unsaved `ExtractedRecipe`
- * (preview), narrowing via `"id" in recipe`/`"tags" in recipe`/`"calories"
- * in recipe`. Owns a local servings target used to rescale ingredient
- * quantities (via `lib/scale`) and the nutrition label's servings display,
- * independent of the recipe's stored `servings`.
+ * middle, and nutrition facts on the right — hidden by default, and only
+ * calculated (via `onCalculateNutrition`) when the user asks for it.
+ * Accepts either a saved `Recipe` or an unsaved `ExtractedRecipe` (preview),
+ * narrowing via `"id" in recipe`/`"tags" in recipe`/`"calories" in recipe`.
+ * Owns a local servings target used to rescale ingredient quantities (via
+ * `lib/scale`) and the nutrition label's servings display, independent of
+ * the recipe's stored `servings`.
  */
-export default function RecipeCard({ recipe }: RecipeCardProps) {
+export default function RecipeCard({ recipe, onCalculateNutrition }: RecipeCardProps) {
   const baseServings = parseServingsCount(recipe.servings);
   const [targetServings, setTargetServings] = useState(baseServings ?? 1);
   const [servingsText, setServingsText] = useState(String(baseServings ?? 1));
   const [imageFailed, setImageFailed] = useState(false);
-  const [showNutrition, setShowNutrition] = useState(true);
+  const [showNutrition, setShowNutrition] = useState(false);
+  const [calculating, setCalculating] = useState(false);
 
   const scale = baseServings ? targetServings / baseServings : 1;
 
@@ -49,17 +60,39 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
   const tags = "tags" in recipe ? recipe.tags : undefined;
   // Per-serving values: dividing the stored (whole-recipe) totals by
   // baseServings rather than by targetServings, since scaling ingredients up
-  // or down changes the total but not the amount in a single serving. `null`
-  // (field never calculated, e.g. on a recipe last analyzed before a given
-  // nutrient was tracked) is kept as `null` rather than coerced to 0.
+  // or down changes the total but not the amount in a single serving. A
+  // recipe with no servings count is labeled as one serving (the whole
+  // recipe). `null` (field never calculated, e.g. on a recipe last analyzed
+  // before a given nutrient was tracked) is kept as `null`, not coerced to 0.
+  const nutritionServings = baseServings ?? 1;
   function perServing(value: number | null | undefined, decimals: number) {
-    if (value == null || !baseServings) return null;
+    if (value == null) return null;
     const factor = 10 ** decimals;
-    return Math.round((value / baseServings) * factor) / factor;
+    return Math.round((value / nutritionServings) * factor) / factor;
+  }
+
+  async function calculateNutrition() {
+    if (!onCalculateNutrition) return;
+    setCalculating(true);
+    try {
+      if (await onCalculateNutrition()) setShowNutrition(true);
+    } finally {
+      setCalculating(false);
+    }
+  }
+
+  // Showing nutrition that was never calculated (or was cleared by an
+  // ingredient edit) is what triggers the calculation.
+  function handleToggleNutrition() {
+    if (!nutrition) {
+      void calculateNutrition();
+    } else {
+      setShowNutrition((prev) => !prev);
+    }
   }
 
   const nutrition =
-    "calories" in recipe && recipe.calories != null && baseServings
+    "calories" in recipe && recipe.calories != null
       ? {
           calories: perServing(recipe.calories, 0) ?? 0,
           proteinGrams: perServing(recipe.proteinGrams, 1) ?? 0,
@@ -217,22 +250,54 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
           </div>
         )}
 
-        {/* Right: nutrition label. Its "servings" header tracks the live
-            servings stepper (targetServings) so it stays in sync with the
-            scaled ingredient list above; the per-serving nutrient amounts
-            themselves don't change with scaling since they're already
-            computed per single serving. */}
-        {nutrition && baseServings && (
-          <div className="sm:shrink-0">
-            <button
-              type="button"
-              onClick={() => setShowNutrition((prev) => !prev)}
-              className="mb-2 text-xs font-medium text-orange-700 hover:text-orange-900 dark:text-orange-300 dark:hover:text-orange-200"
-            >
-              {showNutrition ? "Hide nutrition facts" : "Show nutrition facts"}
-            </button>
-            {showNutrition && (
-              <NutritionLabel values={nutrition} servings={targetServings} />
+        {/* Right: nutrition, hidden until requested. The label's "servings"
+            header tracks the live servings stepper (targetServings) so it
+            stays in sync with the scaled ingredient list; the per-serving
+            nutrient amounts themselves don't change with scaling since
+            they're already computed per single serving. */}
+        {onCalculateNutrition && (
+          <div className="flex flex-col gap-2 sm:max-w-xs sm:shrink-0">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleToggleNutrition}
+                disabled={calculating}
+                aria-expanded={showNutrition && Boolean(nutrition)}
+                className={nutritionLinkClass}
+              >
+                {!nutrition
+                  ? calculating
+                    ? "Calculating nutrition…"
+                    : "Calculate nutrition facts"
+                  : showNutrition
+                    ? "Hide nutrition facts"
+                    : "Show nutrition facts"}
+              </button>
+              {showNutrition && nutrition && (
+                <button
+                  type="button"
+                  onClick={() => void calculateNutrition()}
+                  disabled={calculating}
+                  className={nutritionLinkClass}
+                >
+                  {calculating ? "Recalculating…" : "Recalculate"}
+                </button>
+              )}
+            </div>
+            {showNutrition && nutrition && (
+              <>
+                <p
+                  role="note"
+                  className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-400/10 dark:text-amber-200"
+                >
+                  Nutrition information is an estimate from the USDA FoodData
+                  Central API and may be incomplete or incorrect.
+                </p>
+                <NutritionLabel
+                  values={nutrition}
+                  servings={baseServings ? targetServings : nutritionServings}
+                />
+              </>
             )}
           </div>
         )}

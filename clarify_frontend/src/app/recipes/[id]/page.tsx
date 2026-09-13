@@ -12,8 +12,8 @@ import { ApiError, recipesApi, type Recipe } from "@/lib/api";
 /**
  * Single recipe view: fetches the recipe by id (`recipesApi.get`), treating a
  * 404 specially to show a "not found" message rather than a generic error.
- * Nutrition is calculated automatically by the backend on create/import/edit,
- * so this page only needs to display it. Also exposes delete (with a native
+ * Nutrition is only calculated on request (`recipesApi.calculateNutrition`,
+ * triggered from `RecipeCard`). Also exposes delete (with a native
  * `confirm()` guard).
  */
 function RecipeDetailContent() {
@@ -40,6 +40,16 @@ function RecipeDetailContent() {
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  async function handleCalculateNutrition() {
+    try {
+      setRecipe(await recipesApi.calculateNutrition(id));
+      return true;
+    } catch (err) {
+      showMessage(err instanceof ApiError ? err.message : "Could not calculate nutrition.");
+      return false;
+    }
+  }
 
   async function handleDelete() {
     if (!confirm("Delete this recipe?")) return;
@@ -80,7 +90,11 @@ function RecipeDetailContent() {
           </button>
         </div>
       </div>
-      <RecipeCard key={recipe.id} recipe={recipe} />
+      <RecipeCard
+        key={recipe.id}
+        recipe={recipe}
+        onCalculateNutrition={handleCalculateNutrition}
+      />
     </div>
   );
 }

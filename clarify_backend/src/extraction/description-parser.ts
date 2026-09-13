@@ -17,6 +17,8 @@ type Section = 'none' | 'ingredients' | 'instructions' | 'other';
 
 const URL_RE = /https?:\/\/[^\s<>"'()[\]{}]+/gi;
 const HASHTAG_RE = /(^|\s)#[\p{L}\p{N}_]+/gu;
+// Non-global twin of HASHTAG_RE for .test(), which is stateful on /g regexes.
+const HAS_HASHTAG_RE = /(^|\s)#[\p{L}\p{N}_]+/u;
 const EMOJI_RE = /\p{Extended_Pictographic}|️|‍|⃣/gu;
 const LEADING_BULLET_RE = /^[\s•·▪▫◦●○■□►▶➤➔→*~|>\-–—]+/;
 
@@ -124,7 +126,16 @@ export function parseRecipeDescription(text: string): ParsedDescription {
     prepTime ??= PREP_RE.exec(line)?.[1]?.trim();
     cookTime ??= COOK_RE.exec(line)?.[1]?.trim();
 
-    if (!content || section === 'other' || isMetadata) {
+    // Short hashtag-laden lines ("pizza bites recipe 🍕 #cooking #food") are
+    // captions/SEO, not steps or ingredients, even inside a recipe section.
+    const isHashtagCaption =
+      HAS_HASHTAG_RE.test(rawLine) &&
+      !hasStepMarker &&
+      !startsWithQuantity(content) &&
+      content.length <= 80 &&
+      !/[.!?]$/.test(content);
+
+    if (!content || section === 'other' || isMetadata || isHashtagCaption) {
       previousLineBlank = false;
       continue;
     }

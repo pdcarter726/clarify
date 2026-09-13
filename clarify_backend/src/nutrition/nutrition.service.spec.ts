@@ -427,6 +427,24 @@ describe('NutritionService', () => {
     );
   });
 
+  it('understands abbreviated units with a trailing period (e.g. "tbsp." from recipe sites)', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(searchResult(1)))
+      .mockResolvedValueOnce(jsonResponse(foodDetail({ calories: 717 })));
+    global.fetch = fetchMock;
+
+    // 4 tbsp butter = 1/4 cup of the 227g/cup estimate ~= 56.75g, not 4 x 100g.
+    const result = await service.calculateForIngredients([
+      { name: 'unsalted butter, divided', quantity: '4', unit: 'Tbsp.' },
+    ]);
+
+    expect(result.calories).toBeCloseTo(
+      (717 * (4 * (14.7868 / 236.588) * 227)) / 100,
+      0,
+    );
+  });
+
   it('uses a real gram weight for a garlic clove instead of the flat 100g guess', async () => {
     const fetchMock = jest
       .fn()
