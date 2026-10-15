@@ -296,20 +296,44 @@ function TrySection() {
             <>
               <h3 className="disp text-2xl font-bold leading-[1.15]">{recipe.title}</h3>
               <RecipeChips recipe={recipe} />
-              <ol className="flex flex-col gap-3.5 text-[15px] leading-relaxed">
-                {steps.slice(0, 5).map((step, i) => (
-                  <li
-                    key={`${recipe.sourceUrl}-${i}`}
-                    className="rin flex items-start gap-3"
-                    style={{ animationDelay: `${i * 80}ms` }}
-                  >
-                    <b className="inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-hi text-[13px] text-on-hi">
-                      {i + 1}
-                    </b>
-                    <span className="pt-0.5">{step.text}</span>
-                  </li>
-                ))}
-              </ol>
+              {recipe.ingredients.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  <h4 className="text-[15px] font-bold">Ingredients</h4>
+                  <ul className="text-[15px]">
+                    {recipe.ingredients.map((ing, i) => (
+                      <li
+                        key={`${recipe.sourceUrl}-ing-${i}`}
+                        className="rin flex gap-4 border-t border-line py-2.5 leading-snug"
+                        style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}
+                      >
+                        <b className="num w-[84px] shrink-0">
+                          {[ing.quantity, ing.unit].filter(Boolean).join(" ")}
+                        </b>
+                        <span className="text-muted">{ing.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {steps.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  <h4 className="text-[15px] font-bold">Instructions</h4>
+                  <ol className="flex flex-col gap-3.5 text-[15px] leading-relaxed">
+                    {steps.map((step, i) => (
+                      <li
+                        key={`${recipe.sourceUrl}-step-${i}`}
+                        className="rin flex items-start gap-3"
+                        style={{ animationDelay: `${Math.min(i, 12) * 60}ms` }}
+                      >
+                        <b className="inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-hi text-[13px] text-on-hi">
+                          {i + 1}
+                        </b>
+                        <span className="pt-0.5">{step.text}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
               <p className="border-t border-line pt-3.5 text-sm text-muted">
                 Log in or sign up to save this recipe to your collection.
               </p>
@@ -354,7 +378,6 @@ export default function LandingPage() {
       <main>
         <section className="wrap grid items-center gap-16 pb-24 pt-20 [grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr))]">
           <div className="flex flex-col gap-7">
-            <span className="chip chip-tint rise self-start">Recipe manager</span>
             <h1
               className="disp rise text-[clamp(42px,5.6vw,72px)] font-bold leading-[1.04] [text-wrap:balance]"
               style={{ animationDelay: ".08s" }}

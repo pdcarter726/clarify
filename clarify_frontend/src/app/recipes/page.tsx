@@ -2,11 +2,27 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import RecipeSummaryCard from "@/components/RecipeSummaryCard";
+import RecipeSummaryCard, { type RecipeView } from "@/components/RecipeSummaryCard";
 import TagFilterBar from "@/components/TagFilterBar";
-import Icon from "@/components/Icon";
+import Icon, { type IconName } from "@/components/Icon";
 import { useToast } from "@/lib/toast-context";
 import { ApiError, recipesApi, tagsApi, type Recipe, type Tag } from "@/lib/api";
+
+const VIEW_KEY = "clarify_recipe_view";
+const PAGE_SIZE_KEY = "clarify_recipe_page_size";
+const PAGE_SIZES = [6, 12, 24, 48];
+
+const VIEWS: { value: RecipeView; label: string; icon: IconName }[] = [
+  { value: "large", label: "Large", icon: "gridLarge" },
+  { value: "small", label: "Small", icon: "gridSmall" },
+  { value: "list", label: "List", icon: "rows" },
+];
+
+const GRID_CLASS: Record<RecipeView, string> = {
+  large: "grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr))]",
+  small: "grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(190px,100%),1fr))]",
+  list: "flex flex-col gap-3",
+};
 
 /**
  * Recipe list/search/filter page plus a quick "import from URL" form. Search
@@ -23,7 +39,38 @@ function RecipesPageContent() {
   const [loading, setLoading] = useState(true);
   const [importUrl, setImportUrl] = useState("");
   const [importing, setImporting] = useState(false);
+  const [view, setView] = useState<RecipeView>("large");
+  const [pageSize, setPageSize] = useState(12);
+  const [page, setPage] = useState(1);
   const { showMessage } = useToast();
+
+  // Restore the saved layout preferences once on the client (localStorage is unavailable during SSR).
+  useEffect(() => {
+    try {
+      const savedView = localStorage.getItem(VIEW_KEY);
+      const savedSize = Number(localStorage.getItem(PAGE_SIZE_KEY));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (savedView === "large" || savedView === "small" || savedView === "list") setView(savedView);
+      if (PAGE_SIZES.includes(savedSize)) setPageSize(savedSize);
+    } catch {
+      // Preferences are optional; ignore unavailable storage.
+    }
+  }, []);
+
+  function chooseView(next: RecipeView) {
+    setView(next);
+    try {
+      localStorage.setItem(VIEW_KEY, next);
+    } catch {}
+  }
+
+  function choosePageSize(next: number) {
+    setPageSize(next);
+    setPage(1);
+    try {
+      localStorage.setItem(PAGE_SIZE_KEY, String(next));
+    } catch {}
+  }
 
   const loadRecipes = useCallback(
     async (tagFilter: string[], q: string) => {
@@ -57,6 +104,7 @@ function RecipesPageContent() {
     // Only async work runs synchronously here; setState calls happen after
     // an await, so this isn't the cascading-render pattern the rule guards against.
     // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPage(1);
     loadRecipes(selectedTags, searchQuery);
   }, [selectedTags, searchQuery, loadRecipes]);
 
@@ -80,6 +128,10 @@ function RecipesPageContent() {
       setImporting(false);
     }
   }
+
+  const totalPages = Math.max(1, Math.ceil(recipes.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const visible = recipes.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const isFiltered = selectedTags.length > 0 || searchQuery.trim().length > 0;
   const countLabel = loading
@@ -137,6 +189,37 @@ function RecipesPageContent() {
           />
         </div>
 
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <div role="group" aria-label="Recipe layout" className="flex gap-1 rounded-xl bg-sunk p-1">
+            {VIEWS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={view === option.value}
+                onClick={() => chooseView(option.value)}
+                className={`seg seg-static min-h-9 px-3.5 text-sm ${view === option.value ? "seg-on" : ""}`}
+              >
+                <Icon name={option.icon} size={18} />
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <label className="flex items-center gap-2.5 text-sm font-semibold text-muted">
+            Per page
+            <select
+              value={pageSize}
+              onChange={(e) => choosePageSize(Number(e.target.value))}
+              className="field min-h-10 w-auto px-3 text-sm text-ink"
+            >
+              {PAGE_SIZES.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
         {loading && recipes.length === 0 ? (
           <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr))]" role="status" aria-label="Loading recipes">
             {[0, 1, 2].map((i) => (
@@ -150,11 +233,39 @@ function RecipesPageContent() {
               : "No recipes yet. Create one or import from a URL above."}
           </div>
         ) : (
-          <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr))]">
-            {recipes.map((recipe) => (
-              <RecipeSummaryCard key={recipe.id} recipe={recipe} />
-            ))}
-          </div>
+          <>
+            <div className={GRID_CLASS[view]}>
+              {visible.map((recipe) => (
+                <RecipeSummaryCard key={recipe.id} recipe={recipe} view={view} />
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <nav aria-label="Pagination" className="flex items-center justify-center gap-3 pt-2">
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={currentPage <= 1}
+                  onClick={() => setPage(currentPage - 1)}
+                >
+                  <Icon name="chevronLeft" size={18} />
+                  Previous
+                </button>
+                <span className="num min-w-24 text-center text-[15px] font-semibold" aria-live="polite">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setPage(currentPage + 1)}
+                >
+                  Next
+                  <Icon name="chevronRight" size={18} />
+                </button>
+              </nav>
+            )}
+          </>
         )}
       </div>
     </main>

@@ -65,6 +65,35 @@ const PATHS = {
   ),
   flame: <path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 .2 1.2.8 2 1.8 2.2C10.5 8.5 11 5.5 12 3Z" />,
   heart: <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" />,
+  gridLarge: (
+    <>
+      <rect x="4" y="4" width="7" height="7" rx="1.5" />
+      <rect x="13" y="4" width="7" height="7" rx="1.5" />
+      <rect x="4" y="13" width="7" height="7" rx="1.5" />
+      <rect x="13" y="13" width="7" height="7" rx="1.5" />
+    </>
+  ),
+  gridSmall: (
+    <>
+      <rect x="3.5" y="3.5" width="4.5" height="4.5" rx="1" />
+      <rect x="9.75" y="3.5" width="4.5" height="4.5" rx="1" />
+      <rect x="16" y="3.5" width="4.5" height="4.5" rx="1" />
+      <rect x="3.5" y="9.75" width="4.5" height="4.5" rx="1" />
+      <rect x="9.75" y="9.75" width="4.5" height="4.5" rx="1" />
+      <rect x="16" y="9.75" width="4.5" height="4.5" rx="1" />
+      <rect x="3.5" y="16" width="4.5" height="4.5" rx="1" />
+      <rect x="9.75" y="16" width="4.5" height="4.5" rx="1" />
+      <rect x="16" y="16" width="4.5" height="4.5" rx="1" />
+    </>
+  ),
+  rows: (
+    <>
+      <rect x="4" y="5" width="16" height="5" rx="1.5" />
+      <rect x="4" y="14" width="16" height="5" rx="1.5" />
+    </>
+  ),
+  chevronLeft: <path d="M15 5l-7 7 7 7" />,
+  chevronRight: <path d="M9 5l7 7-7 7" />,
   external: (
     <>
       <path d="M14 4h6v6M20 4l-9 9" />
