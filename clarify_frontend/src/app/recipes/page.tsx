@@ -241,7 +241,11 @@ function RecipesPageContent() {
             </div>
 
             {totalPages > 1 && (
-              <nav aria-label="Pagination" className="flex items-center justify-center gap-3 pt-2">
+              <nav
+                aria-label="Pagination"
+                className="sticky bottom-4 z-10 flex items-center justify-center gap-3 self-center rounded-2xl border border-line bg-surface px-4 py-3"
+                style={{ boxShadow: "var(--shadow)" }}
+              >
                 <button
                   type="button"
                   className="btn"

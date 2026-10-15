@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
@@ -226,6 +226,67 @@ function HeroDemo() {
   );
 }
 
+const COLLAPSED_HEIGHT = 420;
+
+/**
+ * Lays its children out in side-by-side columns and, when they are taller
+ * than `COLLAPSED_HEIGHT`, clips them behind a fade with a "View more" toggle.
+ * Overflow is re-measured with a ResizeObserver so it tracks viewport changes.
+ */
+function ExpandableBody({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setOverflows(el.scrollHeight > COLLAPSED_HEIGHT + 24);
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const clipped = overflows && !expanded;
+
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <div className="relative w-full">
+        <div
+          ref={ref}
+          id="try-recipe-body"
+          className="grid gap-x-10 gap-y-8 overflow-hidden [grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))]"
+          style={{ maxHeight: expanded ? undefined : COLLAPSED_HEIGHT }}
+        >
+          {children}
+        </div>
+        {clipped && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-28"
+            style={{
+              background:
+                "linear-gradient(to bottom, color-mix(in srgb, var(--surface) 0%, transparent), var(--surface))",
+            }}
+          />
+        )}
+      </div>
+      {overflows && (
+        <button
+          type="button"
+          className="btn self-center"
+          aria-expanded={expanded}
+          aria-controls="try-recipe-body"
+          onClick={() => setExpanded((open) => !open)}
+        >
+          {expanded ? "Show less" : "View more"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** "Try it now" section: previews an extracted recipe's steps with no account required. */
 function TrySection() {
   const preview = useRecipePreview();
@@ -247,8 +308,8 @@ function TrySection() {
 
   return (
     <section id="try" className="wrap scroll-mt-6 pb-24">
-      <div className="grid items-center gap-12 rounded-[28px] bg-sunk p-[clamp(24px,5vw,56px)] [grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr))]">
-        <form onSubmit={handlePreview} className="flex flex-col gap-[18px]">
+      <div className="flex flex-col gap-10 rounded-[28px] bg-sunk p-[clamp(24px,5vw,56px)]">
+        <form onSubmit={handlePreview} className="flex max-w-[640px] flex-col gap-[18px]">
           <h2 className="disp text-[clamp(30px,3.6vw,40px)] font-bold leading-[1.1]">Try it now</h2>
           <p className="text-[17px] leading-relaxed text-muted">
             Paste a recipe URL to see Clarify in action. No account required.
@@ -287,7 +348,7 @@ function TrySection() {
         </form>
 
         <article
-          className="flex min-h-[420px] min-w-0 flex-col gap-[18px] rounded-[20px] border border-line bg-surface p-7"
+          className="flex min-h-[200px] min-w-0 flex-col gap-[18px] rounded-[20px] border border-line bg-surface p-7"
           style={{ boxShadow: "var(--shadow)" }}
         >
           {preview.loading ? (
@@ -296,8 +357,9 @@ function TrySection() {
             <>
               <h3 className="disp text-2xl font-bold leading-[1.15]">{recipe.title}</h3>
               <RecipeChips recipe={recipe} />
+              <ExpandableBody key={recipe.sourceUrl}>
               {recipe.ingredients.length > 0 && (
-                <div className="flex flex-col gap-1">
+                <div className="flex min-w-0 flex-col gap-1">
                   <h4 className="text-[15px] font-bold">Ingredients</h4>
                   <ul className="text-[15px]">
                     {recipe.ingredients.map((ing, i) => (
@@ -316,7 +378,7 @@ function TrySection() {
                 </div>
               )}
               {steps.length > 0 && (
-                <div className="flex flex-col gap-3">
+                <div className="flex min-w-0 flex-col gap-3">
                   <h4 className="text-[15px] font-bold">Instructions</h4>
                   <ol className="flex flex-col gap-3.5 text-[15px] leading-relaxed">
                     {steps.map((step, i) => (
@@ -334,6 +396,7 @@ function TrySection() {
                   </ol>
                 </div>
               )}
+              </ExpandableBody>
               <p className="border-t border-line pt-3.5 text-sm text-muted">
                 Log in or sign up to save this recipe to your collection.
               </p>
