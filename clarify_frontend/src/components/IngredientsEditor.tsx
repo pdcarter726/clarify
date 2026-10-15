@@ -1,6 +1,6 @@
 "use client";
 
-import { inputClass } from "./ui";
+import Icon from "./Icon";
 
 export interface IngredientDraft {
   name: string;
@@ -32,56 +32,54 @@ export default function IngredientsEditor({ ingredients, onChange }: Ingredients
   }
 
   return (
-    <div>
-      <div className="mb-1.5 flex items-center justify-between">
-        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Ingredients</span>
-        <button
-          type="button"
-          onClick={addRow}
-          className="text-sm font-medium text-amber-700 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-300"
-        >
-          + Add ingredient
+    <section className="card flex flex-col gap-4 p-7">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-lg font-bold">Ingredients</h2>
+        <button type="button" onClick={addRow} className="btn">
+          <Icon name="plus" />
+          Add ingredient
         </button>
       </div>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2.5">
         {ingredients.map((row, index) => (
-          <div key={index} className="flex gap-2">
+          <div key={index} className="flex flex-wrap items-center gap-2">
             <input
               type="text"
+              aria-label={`Ingredient ${index + 1} name`}
               placeholder="name"
               required
               value={row.name}
               onChange={(e) => updateRow(index, { name: e.target.value })}
-              className={`${inputClass} flex-[3]`}
+              className="field w-auto flex-[1_1_220px]"
             />
             <input
               type="text"
+              aria-label={`Ingredient ${index + 1} quantity`}
               placeholder="qty"
               value={row.quantity}
               onChange={(e) => updateRow(index, { quantity: e.target.value })}
-              className={`${inputClass} flex-1`}
+              className="field w-[84px] flex-none"
             />
             <input
               type="text"
+              aria-label={`Ingredient ${index + 1} unit`}
               placeholder="unit"
               value={row.unit}
               onChange={(e) => updateRow(index, { unit: e.target.value })}
-              className={`${inputClass} flex-1`}
+              className="field w-[132px] flex-none"
             />
             <button
               type="button"
               onClick={() => removeRow(index)}
-              aria-label="Remove ingredient"
-              className="rounded-lg px-2 text-zinc-400 hover:bg-zinc-100 hover:text-red-600 dark:hover:bg-zinc-800"
+              aria-label={`Remove ingredient ${index + 1}`}
+              className="rm-btn"
             >
-              ✕
+              <Icon name="x" />
             </button>
           </div>
         ))}
-        {ingredients.length === 0 && (
-          <p className="text-sm text-zinc-400">No ingredients yet.</p>
-        )}
+        {ingredients.length === 0 && <p className="text-[15px] text-muted">No ingredients yet.</p>}
       </div>
-    </div>
+    </section>
   );
 }

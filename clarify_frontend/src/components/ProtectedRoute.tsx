@@ -21,7 +21,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
 
   if (loading || !user) {
     return (
-      <div className="flex flex-1 items-center justify-center py-24 text-zinc-400">
+      <div className="flex flex-1 items-center justify-center py-24 text-muted" role="status">
         Loading…
       </div>
     );

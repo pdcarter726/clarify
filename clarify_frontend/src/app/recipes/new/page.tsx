@@ -22,14 +22,19 @@ function NewRecipeContent() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl">
-      <h1 className="mb-6 text-2xl font-semibold text-zinc-900 dark:text-white">New recipe</h1>
-      <RecipeForm
-        submitLabel="Create recipe"
-        onSubmit={handleSubmit}
-        onCancel={() => router.push("/recipes")}
-      />
-    </div>
+    <main className="wrap flex-1 pb-20 pt-10">
+      <div className="flex max-w-[800px] flex-col gap-7">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="disp text-4xl font-bold leading-[1.1]">New recipe</h1>
+          <p className="text-[15px] text-muted">Add a recipe by hand, or import one from a URL on the recipes page.</p>
+        </div>
+        <RecipeForm
+          submitLabel="Create recipe"
+          onSubmit={handleSubmit}
+          onCancel={() => router.push("/recipes")}
+        />
+      </div>
+    </main>
   );
 }
 

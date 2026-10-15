@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type KeyboardEvent } from "react";
 import { tagsApi, type Tag } from "@/lib/api";
-import { inputClass, labelClass } from "./ui";
+import Icon from "./Icon";
 
 interface TagPickerProps {
   value: string[];
@@ -51,26 +51,23 @@ export default function TagPicker({ value, onChange }: TagPickerProps) {
   const suggestions = allTags.filter((tag) => !normalizedSelected.includes(tag.name.toLowerCase()));
 
   return (
-    <div>
-      <label className={labelClass} htmlFor="tag-picker-input">
-        Tags
-      </label>
+    <section className="card flex flex-col gap-4 p-7">
+      <h2 className="text-lg font-bold">
+        <label htmlFor="tag-picker-input">Tags</label>
+      </h2>
 
       {value.length > 0 && (
-        <div className="mb-2 mt-1.5 flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {value.map((tag) => (
-            <span
-              key={tag}
-              className="flex items-center gap-1 rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-medium text-teal-800 dark:bg-teal-400/15 dark:text-teal-200"
-            >
+            <span key={tag} className="tagpill">
               #{tag}
               <button
                 type="button"
                 onClick={() => removeTag(tag)}
-                aria-label={`Remove ${tag}`}
-                className="text-teal-600 hover:text-teal-900 dark:text-teal-300 dark:hover:text-teal-100"
+                aria-label={`Remove tag ${tag}`}
+                className="rm-btn h-8 w-8 flex-none rounded-full text-inherit"
               >
-                ×
+                <Icon name="x" size={16} />
               </button>
             </span>
           ))}
@@ -85,23 +82,18 @@ export default function TagPicker({ value, onChange }: TagPickerProps) {
         onKeyDown={handleKeyDown}
         onBlur={() => addTag(draft)}
         placeholder="Type a tag and press Enter (e.g. weeknight)"
-        className={`${inputClass} mt-1`}
+        className="field"
       />
 
       {suggestions.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {suggestions.map((tag) => (
-            <button
-              key={tag.id}
-              type="button"
-              onClick={() => addTag(tag.name)}
-              className="rounded-full border border-teal-200 px-2.5 py-0.5 text-xs font-medium text-teal-600 transition-colors hover:border-teal-400 hover:bg-teal-50 dark:border-teal-400/20 dark:text-teal-400 dark:hover:bg-teal-400/10"
-            >
+            <button key={tag.id} type="button" onClick={() => addTag(tag.name)} className="tagchip">
               + {tag.name}
             </button>
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import RecipeCard from "@/components/RecipeCard";
-import { dangerButtonClass, secondaryButtonClass } from "@/components/ui";
+import Icon from "@/components/Icon";
 import { useToast } from "@/lib/toast-context";
 import { ApiError, recipesApi, type Recipe } from "@/lib/api";
 
@@ -63,39 +63,53 @@ function RecipeDetailContent() {
   }
 
   if (loading) {
-    return <p className="py-12 text-center text-zinc-400">Loading…</p>;
+    return (
+      <div className="flex flex-1 items-center justify-center py-24 text-muted" role="status">
+        Loading…
+      </div>
+    );
   }
 
   if (notFound || !recipe) {
     return (
-      <p className="py-12 text-center text-zinc-400">That recipe could not be found.</p>
+      <main className="wrap flex flex-1 flex-col items-center justify-center gap-4 py-24 text-center">
+        <p className="text-muted">That recipe could not be found.</p>
+        <Link href="/recipes" className="btn">
+          Back to recipes
+        </Link>
+      </main>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+    <main className="wrap flex-1 pb-20 pt-8">
+      <div className="flex max-w-[1080px] flex-col gap-8">
         <Link
           href="/recipes"
-          className="text-sm font-medium text-orange-700 hover:text-orange-900 dark:text-orange-300 dark:hover:text-orange-200"
+          className="inline-flex min-h-11 items-center gap-2 self-start text-[15px] font-semibold text-muted hover:text-ink"
         >
-          ← Back to recipes
+          <Icon name="arrowLeft" />
+          All recipes
         </Link>
-        <div className="flex gap-2">
-          <Link href={`/recipes/${id}/edit`} className={secondaryButtonClass}>
-            Edit
-          </Link>
-          <button type="button" onClick={handleDelete} className={dangerButtonClass}>
-            Delete
-          </button>
-        </div>
+        <RecipeCard
+          key={recipe.id}
+          recipe={recipe}
+          onCalculateNutrition={handleCalculateNutrition}
+          actions={
+            <>
+              <Link href={`/recipes/${id}/edit`} className="btn">
+                <Icon name="edit" />
+                Edit
+              </Link>
+              <button type="button" onClick={handleDelete} className="btn btn-danger">
+                <Icon name="trash" />
+                Delete
+              </button>
+            </>
+          }
+        />
       </div>
-      <RecipeCard
-        key={recipe.id}
-        recipe={recipe}
-        onCalculateNutrition={handleCalculateNutrition}
-      />
-    </div>
+    </main>
   );
 }
 

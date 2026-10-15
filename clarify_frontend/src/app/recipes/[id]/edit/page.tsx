@@ -48,29 +48,38 @@ function EditRecipeContent() {
   }
 
   if (loading) {
-    return <p className="py-12 text-center text-zinc-400">Loading…</p>;
+    return (
+      <div className="flex flex-1 items-center justify-center py-24 text-muted" role="status">
+        Loading…
+      </div>
+    );
   }
 
   if (notFound || !recipe) {
     return (
-      <p className="py-12 text-center text-zinc-400">
+      <main className="wrap flex flex-1 items-center justify-center py-24 text-muted">
         That recipe could not be found.
-      </p>
+      </main>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl">
-      <h1 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-white">
-        Editing: {recipe.title}
-      </h1>
-      <RecipeForm
-        initialRecipe={recipe}
-        submitLabel="Save changes"
-        onSubmit={handleSubmit}
-        onCancel={() => router.push(`/recipes/${id}`)}
-      />
-    </div>
+    <main className="wrap flex-1 pb-20 pt-10">
+      <div className="flex max-w-[800px] flex-col gap-7">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="disp text-4xl font-bold leading-[1.1]">Edit recipe</h1>
+          <p className="text-[15px] text-muted">
+            Changes to ingredients clear any saved nutrition facts, so you can recalculate them.
+          </p>
+        </div>
+        <RecipeForm
+          initialRecipe={recipe}
+          submitLabel="Save changes"
+          onSubmit={handleSubmit}
+          onCancel={() => router.push(`/recipes/${id}`)}
+        />
+      </div>
+    </main>
   );
 }
 

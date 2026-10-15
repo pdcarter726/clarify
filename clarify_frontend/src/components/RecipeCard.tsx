@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { ExtractedRecipe, Recipe } from "@/lib/api";
 import { formatServings, parseServingsCount, scaleQuantity, sourceHostname } from "@/lib/scale";
 import CookModeToggle from "@/components/CookModeToggle";
+import Icon from "@/components/Icon";
 import NutritionLabel from "@/components/NutritionLabel";
 
 interface RecipeCardProps {
@@ -14,22 +15,22 @@ interface RecipeCardProps {
    * and which then show no nutrition section at all.
    */
   onCalculateNutrition?: () => Promise<boolean>;
+  /** Buttons (edit/delete) shown beside the tags in the header. */
+  actions?: ReactNode;
 }
 
-const nutritionLinkClass =
-  "text-xs font-medium text-orange-700 hover:text-orange-900 disabled:cursor-wait disabled:opacity-60 dark:text-orange-300 dark:hover:text-orange-200";
-
 /**
- * Full recipe layout: image + ingredients on the left, instructions in the
- * middle, and nutrition facts on the right — hidden by default, and only
- * calculated (via `onCalculateNutrition`) when the user asks for it.
+ * Full recipe layout: header (title, cook mode, meta chips, tags, actions),
+ * then image + ingredients + nutrition on the left and instructions on the
+ * right. Nutrition is hidden by default and only calculated (via
+ * `onCalculateNutrition`) when the user asks for it.
  * Accepts either a saved `Recipe` or an unsaved `ExtractedRecipe` (preview),
  * narrowing via `"id" in recipe`/`"tags" in recipe`/`"calories" in recipe`.
  * Owns a local servings target used to rescale ingredient quantities (via
  * `lib/scale`) and the nutrition label's servings display, independent of
  * the recipe's stored `servings`.
  */
-export default function RecipeCard({ recipe, onCalculateNutrition }: RecipeCardProps) {
+export default function RecipeCard({ recipe, onCalculateNutrition, actions }: RecipeCardProps) {
   const baseServings = parseServingsCount(recipe.servings);
   const [targetServings, setTargetServings] = useState(baseServings ?? 1);
   const [servingsText, setServingsText] = useState(String(baseServings ?? 1));
@@ -112,97 +113,76 @@ export default function RecipeCard({ recipe, onCalculateNutrition }: RecipeCardP
         }
       : undefined;
 
-  const metaParts = [
-    formatServings(recipe.servings) && {
-      label: `🍽️ ${formatServings(recipe.servings)}`,
-      color: "amber" as const,
-    },
-    recipe.prepTime && { label: `⏱️ Prep ${recipe.prepTime}`, color: "teal" as const },
-    recipe.cookTime && { label: `🔥 Cook ${recipe.cookTime}`, color: "rose" as const },
-  ].filter(Boolean) as { label: string; color: "amber" | "teal" | "rose" }[];
-
-  const pillClasses = {
-    amber: "bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300",
-    teal: "bg-teal-100 text-teal-800 dark:bg-teal-400/15 dark:text-teal-300",
-    rose: "bg-rose-100 text-rose-800 dark:bg-rose-400/15 dark:text-rose-300",
-  };
+  const servingsLabel = formatServings(recipe.servings);
+  const steps = recipe.instructions.slice().sort((a, b) => a.stepNumber - b.stepNumber);
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-md shadow-orange-900/5 dark:border-white/10 dark:bg-white/5 dark:shadow-none">
-      <div className="flex flex-col gap-4 p-6 pb-0">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">{recipe.title}</h2>
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <h1 className="disp max-w-[16em] text-[clamp(32px,4.4vw,48px)] font-bold leading-[1.08] [text-wrap:balance]">
+            {recipe.title}
+          </h1>
           <CookModeToggle />
         </div>
 
-        {(metaParts.length > 0 || recipe.sourceUrl) && (
-          <div className="flex flex-wrap gap-1.5">
-            {metaParts.map((part) => (
-              <span
-                key={part.label}
-                className={`rounded-full px-2.5 py-1 text-xs font-semibold ${pillClasses[part.color]}`}
-              >
-                {part.label}
-              </span>
-            ))}
+        {(servingsLabel || recipe.prepTime || recipe.cookTime || recipe.sourceUrl) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {servingsLabel && <span className="chip chip-tint">{servingsLabel}</span>}
+            {recipe.prepTime && <span className="chip">Prep {recipe.prepTime}</span>}
+            {recipe.cookTime && <span className="chip">Cook {recipe.cookTime}</span>}
             {recipe.sourceUrl && (
               <a
                 href={recipe.sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-semibold text-orange-800 hover:bg-orange-200 dark:bg-orange-400/15 dark:text-orange-300"
+                className="chip text-accent"
               >
-                🔗 {sourceHostname(recipe.sourceUrl)}
+                <Icon name="external" size={14} />
+                {sourceHostname(recipe.sourceUrl)}
               </a>
             )}
           </div>
         )}
 
-        {tags && tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {tags.map((tag) => (
-              <span
-                key={tag.id}
-                className="rounded-full border border-teal-200 px-2.5 py-0.5 text-xs font-medium text-teal-700 dark:border-teal-400/20 dark:text-teal-300"
-              >
-                #{tag.name}
-              </span>
-            ))}
+        {((tags && tags.length > 0) || actions) && (
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <p className="text-sm font-semibold text-accent">
+              {tags?.map((tag) => `#${tag.name}`).join("   ")}
+            </p>
+            {actions && <div className="flex flex-wrap gap-2.5">{actions}</div>}
           </div>
         )}
       </div>
 
-      <div className="flex flex-col gap-6 p-6 sm:flex-row">
-        {/* Left: image, with ingredients underneath. */}
-        <div className="flex flex-col gap-4 sm:w-72 sm:shrink-0">
+      <div className="flex flex-wrap items-start gap-6">
+        <aside className="flex min-w-0 max-w-[460px] flex-[1_1_360px] flex-col gap-6">
           {recipe.imageUrl && !imageFailed && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={recipe.imageUrl}
               alt={recipe.title}
               loading="lazy"
-              className="h-48 w-full rounded-xl object-cover"
+              className="h-[200px] w-full rounded-2xl object-cover"
               onError={() => setImageFailed(true)}
             />
           )}
 
           {recipe.ingredients.length > 0 && (
-            <div>
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
-                  Ingredients
-                </h3>
+            <section className="card p-6">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
+                <h2 className="text-[19px] font-bold">Ingredients</h2>
                 {baseServings && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">Servings</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] text-muted">Servings</span>
                     <button
                       type="button"
+                      className="step-btn"
                       onClick={() => updateServings(targetServings - 1)}
                       disabled={targetServings <= 1}
                       aria-label="Decrease servings"
-                      className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-orange-700 transition-colors hover:bg-orange-200 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white/10 dark:text-orange-300 dark:hover:bg-white/20"
                     >
-                      −
+                      <Icon name="minus" />
                     </button>
                     <input
                       type="text"
@@ -211,107 +191,118 @@ export default function RecipeCard({ recipe, onCalculateNutrition }: RecipeCardP
                       onChange={(e) => handleServingsInput(e.target.value)}
                       onBlur={handleServingsBlur}
                       aria-label="Number of servings"
-                      className="w-10 rounded-md border border-orange-200 px-1 py-0.5 text-center text-xs outline-none focus:border-orange-500 dark:border-white/10 dark:bg-white/5"
+                      className="num w-12 border-0 bg-transparent text-center text-[17px] font-bold outline-none focus-visible:rounded-md"
                     />
                     <button
                       type="button"
+                      className="step-btn"
                       onClick={() => updateServings(targetServings + 1)}
                       aria-label="Increase servings"
-                      className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-orange-700 transition-colors hover:bg-orange-200 dark:bg-white/10 dark:text-orange-300 dark:hover:bg-white/20"
                     >
-                      +
+                      <Icon name="plus" />
                     </button>
                   </div>
                 )}
               </div>
-              <ul className="list-disc space-y-0.5 pl-5 text-sm text-zinc-600 dark:text-zinc-300">
-                {recipe.ingredients.map((ing, index) => (
-                  <li key={ing.id ?? index}>
-                    {[scaleQuantity(ing.quantity, scale), ing.unit, ing.name]
-                      .filter(Boolean)
-                      .join(" ")}
-                  </li>
-                ))}
+              <ul className="text-[15px]">
+                {recipe.ingredients.map((ing, index) => {
+                  const amount = [scaleQuantity(ing.quantity, scale), ing.unit]
+                    .filter(Boolean)
+                    .join(" ");
+                  return (
+                    <li
+                      key={ing.id ?? index}
+                      className="flex gap-4 border-t border-line py-3 leading-snug"
+                    >
+                      {amount && <b className="num w-[92px] shrink-0">{amount}</b>}
+                      <span className="text-muted">{ing.name}</span>
+                    </li>
+                  );
+                })}
               </ul>
-            </div>
+            </section>
           )}
-        </div>
 
-        {/* Middle: steps, unchanged. */}
-        {recipe.instructions.length > 0 && (
-          <div className="flex-1">
-            <h3 className="mb-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200">
-              Instructions
-            </h3>
-            <ol className="list-decimal space-y-1.5 pl-5 text-sm text-zinc-600 dark:text-zinc-300">
-              {recipe.instructions
-                .slice()
-                .sort((a, b) => a.stepNumber - b.stepNumber)
-                .map((step, index) => (
-                  <li key={step.id ?? index}>{step.text}</li>
-                ))}
-            </ol>
-          </div>
-        )}
-
-        {/* Right: nutrition, hidden until requested. The label's "servings"
-            header tracks the live servings stepper (targetServings) so it
-            stays in sync with the scaled ingredient list; the per-serving
-            nutrient amounts themselves don't change with scaling since
-            they're already computed per single serving. */}
-        {onCalculateNutrition && (
-          <div className="flex flex-col gap-2 sm:max-w-xs sm:shrink-0">
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={handleToggleNutrition}
-                disabled={calculating}
-                aria-expanded={showNutrition && Boolean(nutrition)}
-                className={nutritionLinkClass}
-              >
-                {!nutrition
-                  ? calculating
-                    ? "Calculating nutrition…"
-                    : "Calculate nutrition facts"
-                  : showNutrition
-                    ? "Hide nutrition facts"
-                    : "Show nutrition facts"}
-              </button>
-              {showNutrition && nutrition && (
+          {/* Nutrition, hidden until requested. The label's "servings" header
+              tracks the live servings stepper (targetServings) so it stays in
+              sync with the scaled ingredient list; the per-serving nutrient
+              amounts themselves don't change with scaling since they're
+              already computed per single serving. */}
+          {onCalculateNutrition && (
+            <section className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center gap-x-5">
                 <button
                   type="button"
-                  onClick={() => void calculateNutrition()}
+                  onClick={handleToggleNutrition}
                   disabled={calculating}
-                  className={nutritionLinkClass}
+                  aria-expanded={showNutrition && Boolean(nutrition)}
+                  className="linkbtn"
                 >
-                  {calculating ? "Recalculating…" : "Recalculate"}
+                  {!nutrition
+                    ? calculating
+                      ? "Calculating nutrition…"
+                      : "Calculate nutrition facts"
+                    : showNutrition
+                      ? "Hide nutrition facts"
+                      : "Show nutrition facts"}
                 </button>
+                {showNutrition && nutrition && (
+                  <button
+                    type="button"
+                    onClick={() => void calculateNutrition()}
+                    disabled={calculating}
+                    className="linkbtn"
+                  >
+                    {calculating ? "Recalculating…" : "Recalculate"}
+                  </button>
+                )}
+              </div>
+              {showNutrition && nutrition && (
+                <>
+                  <p
+                    role="note"
+                    className="rounded-xl bg-hi px-3.5 py-3 text-[13px] leading-normal text-on-hi"
+                  >
+                    Nutrition information is an estimate from the USDA FoodData Central API and may
+                    be incomplete or incorrect.
+                  </p>
+                  <NutritionLabel
+                    values={nutrition}
+                    servings={baseServings ? targetServings : nutritionServings}
+                  />
+                </>
               )}
-            </div>
-            {showNutrition && nutrition && (
-              <>
-                <p
-                  role="note"
-                  className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-400/10 dark:text-amber-200"
+            </section>
+          )}
+        </aside>
+
+        {steps.length > 0 && (
+          <section className="card min-w-0 flex-[999_1_440px] p-[clamp(24px,3.5vw,36px)]">
+            <h2 className="pb-2 text-[19px] font-bold">Instructions</h2>
+            <ol>
+              {steps.map((step, index) => (
+                <li
+                  key={step.id ?? index}
+                  className="flex items-start gap-[18px] border-t border-line py-5"
                 >
-                  Nutrition information is an estimate from the USDA FoodData
-                  Central API and may be incomplete or incorrect.
-                </p>
-                <NutritionLabel
-                  values={nutrition}
-                  servings={baseServings ? targetServings : nutritionServings}
-                />
-              </>
-            )}
-          </div>
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-hi text-sm font-bold text-on-hi">
+                    {index + 1}
+                  </span>
+                  <p className="max-w-[36em] pt-[3px] text-[17px] leading-[1.65] [text-wrap:pretty]">
+                    {step.text}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          </section>
         )}
       </div>
 
       {!("id" in recipe) && (
-        <p className="px-6 pb-6 text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="text-sm text-muted">
           Log in or sign up to save this recipe to your collection.
         </p>
       )}
-    </article>
+    </div>
   );
 }

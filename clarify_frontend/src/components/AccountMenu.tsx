@@ -2,17 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import Icon from "./Icon";
 
 /**
- * Avatar dropdown for the signed-in user (renders nothing when logged out).
- * Closes itself on an outside click or Escape, and on logout clears the
- * session (via `useAuth`) and redirects to `/`.
+ * "Account" nav item for the signed-in user (renders nothing when logged out),
+ * opening a dropdown with settings and log out. Closes itself on an outside
+ * click or Escape, and on logout clears the session (via `useAuth`) and
+ * redirects to `/`.
  */
 export default function AccountMenu() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -51,26 +54,27 @@ export default function AccountMenu() {
         onClick={() => setOpen((current) => !current)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Account menu"
         title={user.email}
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-100 text-base text-orange-800 transition-colors hover:bg-orange-200 dark:bg-white/10 dark:text-orange-200 dark:hover:bg-white/20"
+        className={`navitem ${pathname === "/account" ? "navitem-on" : ""}`}
       >
-        👤
+        <Icon name="user" />
+        Account
       </button>
 
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-xl border border-orange-100 bg-white py-1 shadow-lg shadow-orange-900/10 dark:border-white/10 dark:bg-[#211c2e]"
+          className="absolute right-0 z-20 mt-2 w-60 overflow-hidden rounded-xl border border-line bg-surface py-1"
+          style={{ boxShadow: "var(--shadow)" }}
         >
-          <p className="truncate border-b border-orange-100 px-3 py-2 text-xs text-zinc-500 dark:border-white/10 dark:text-zinc-400">
+          <p className="truncate border-b border-line px-4 py-2.5 text-[13px] text-muted">
             {user.email}
           </p>
           <Link
             href="/account"
             role="menuitem"
             onClick={() => setOpen(false)}
-            className="block px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-orange-50 hover:text-zinc-900 dark:text-zinc-200 dark:hover:bg-white/10 dark:hover:text-white"
+            className="flex min-h-11 items-center px-4 text-[15px] font-semibold hover:bg-sunk"
           >
             Account settings
           </Link>
@@ -78,7 +82,7 @@ export default function AccountMenu() {
             type="button"
             role="menuitem"
             onClick={handleLogout}
-            className="block w-full px-3 py-2 text-left text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40"
+            className="flex min-h-11 w-full items-center px-4 text-left text-[15px] font-semibold text-danger hover:bg-sunk"
           >
             Log out
           </button>

@@ -4,13 +4,6 @@ import { useEffect, useState, type FormEvent } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useToast } from "@/lib/toast-context";
 import { ApiError, tagsApi, type Tag } from "@/lib/api";
-import {
-  cardClass,
-  dangerButtonClass,
-  inputClass,
-  primaryButtonClass,
-  secondaryButtonClass,
-} from "@/components/ui";
 
 /**
  * CRUD management UI for the user's tags (`tagsApi`), with inline rename
@@ -104,70 +97,78 @@ function TagsPageContent() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-6">
-      <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Manage tags</h1>
+    <main className="wrap flex-1 pb-20 pt-10">
+      <div className="flex max-w-[680px] flex-col gap-7">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="disp text-4xl font-bold leading-[1.1]">Manage tags</h1>
+          <p className="text-[15px] text-muted">
+            Deleting a tag removes it from every recipe that uses it.
+          </p>
+        </div>
 
-      <form onSubmit={handleCreate} className="flex gap-2">
-        <input
-          type="text"
-          required
-          placeholder="New tag name"
-          value={newTagName}
-          onChange={(e) => setNewTagName(e.target.value)}
-          className={inputClass}
-        />
-        <button type="submit" disabled={creating} className={primaryButtonClass}>
-          Add tag
-        </button>
-      </form>
+        <form onSubmit={handleCreate} className="flex flex-wrap gap-2.5">
+          <label htmlFor="newtag" className="sr-only-label">
+            New tag name
+          </label>
+          <input
+            id="newtag"
+            type="text"
+            required
+            placeholder="New tag name"
+            value={newTagName}
+            onChange={(e) => setNewTagName(e.target.value)}
+            className="field min-h-[52px] w-auto flex-[1_1_240px]"
+          />
+          <button type="submit" disabled={creating} className="btn btn-primary min-h-[52px] px-7">
+            Add tag
+          </button>
+        </form>
 
-      <div className={cardClass}>
         {loading ? (
-          <p className="py-4 text-center text-sm text-zinc-400">Loading…</p>
+          <div className="sk h-40 rounded-2xl" role="status" aria-label="Loading tags" />
         ) : tags.length === 0 ? (
-          <p className="py-4 text-center text-sm text-zinc-400">No tags yet.</p>
+          <div className="rounded-2xl border border-dashed border-edge px-6 py-16 text-center text-base text-muted">
+            No tags yet.
+          </div>
         ) : (
-          <ul className="flex flex-col divide-y divide-orange-100 dark:divide-white/10">
+          <ul className="card px-5 py-1">
             {tags.map((tag) => (
-              <li key={tag.id} className="flex items-center gap-2 py-2.5">
+              <li
+                key={tag.id}
+                className="flex flex-wrap items-center gap-2.5 border-b border-line py-3 last:border-b-0"
+              >
                 {editingId === tag.id ? (
                   <>
+                    <label htmlFor="rename" className="sr-only-label">
+                      Rename tag
+                    </label>
                     <input
+                      id="rename"
                       type="text"
                       autoFocus
                       value={editingName}
                       onChange={(e) => setEditingName(e.target.value)}
-                      className={`${inputClass} flex-1`}
+                      className="field w-auto flex-[1_1_160px]"
                     />
                     <button
                       type="button"
                       onClick={() => handleRename(tag.id)}
                       disabled={savingId === tag.id}
-                      className={secondaryButtonClass}
+                      className="btn btn-primary"
                     >
                       Save
                     </button>
-                    <button type="button" onClick={cancelEdit} className={secondaryButtonClass}>
+                    <button type="button" onClick={cancelEdit} className="btn">
                       Cancel
                     </button>
                   </>
                 ) : (
                   <>
-                    <span className="flex-1 text-sm text-zinc-700 dark:text-zinc-200">
-                      #{tag.name}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => startEdit(tag)}
-                      className={secondaryButtonClass}
-                    >
+                    <span className="flex-[1_1_160px] text-base font-semibold">#{tag.name}</span>
+                    <button type="button" onClick={() => startEdit(tag)} className="btn">
                       Rename
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(tag)}
-                      className={dangerButtonClass}
-                    >
+                    <button type="button" onClick={() => handleDelete(tag)} className="btn btn-danger">
                       Delete
                     </button>
                   </>
@@ -177,7 +178,7 @@ function TagsPageContent() {
           </ul>
         )}
       </div>
-    </div>
+    </main>
   );
 }
 

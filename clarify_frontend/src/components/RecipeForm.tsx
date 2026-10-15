@@ -5,7 +5,6 @@ import type { Recipe, RecipeInput } from "@/lib/api";
 import IngredientsEditor, { type IngredientDraft } from "./IngredientsEditor";
 import InstructionsEditor, { type InstructionDraft } from "./InstructionsEditor";
 import TagPicker from "./TagPicker";
-import { inputClass, labelClass, primaryButtonClass, secondaryButtonClass, cardClass } from "./ui";
 
 interface RecipeFormProps {
   initialRecipe?: Recipe;
@@ -87,85 +86,91 @@ export default function RecipeForm({ initialRecipe, onSubmit, onCancel, submitLa
   }
 
   return (
-    <form onSubmit={handleSubmit} className={`${cardClass} flex flex-col gap-5`}>
-      <div>
-        <label className={labelClass} htmlFor="title">
-          Title
-        </label>
-        <input
-          id="title"
-          type="text"
-          required
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className={`${inputClass} mt-1`}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div>
-          <label className={labelClass} htmlFor="servings">
-            Servings
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      <section className="card flex flex-col gap-5 p-7">
+        <h2 className="text-lg font-bold">Details</h2>
+        <div className="flex flex-col gap-1.5">
+          <label className="lbl" htmlFor="title">
+            Title
           </label>
           <input
-            id="servings"
+            id="title"
             type="text"
-            value={servings}
-            onChange={(e) => setServings(e.target.value)}
-            className={`${inputClass} mt-1`}
+            required
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="field"
           />
         </div>
-        <div>
-          <label className={labelClass} htmlFor="prepTime">
-            Prep time
-          </label>
-          <input
-            id="prepTime"
-            type="text"
-            value={prepTime}
-            onChange={(e) => setPrepTime(e.target.value)}
-            className={`${inputClass} mt-1`}
-          />
-        </div>
-        <div>
-          <label className={labelClass} htmlFor="cookTime">
-            Cook time
-          </label>
-          <input
-            id="cookTime"
-            type="text"
-            value={cookTime}
-            onChange={(e) => setCookTime(e.target.value)}
-            className={`${inputClass} mt-1`}
-          />
-        </div>
-      </div>
 
-      <div>
-        <label className={labelClass} htmlFor="imageUrl">
-          Image URL
-        </label>
-        <input
-          id="imageUrl"
-          type="url"
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          className={`${inputClass} mt-1`}
-        />
-      </div>
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr))]">
+          <div className="flex flex-col gap-1.5">
+            <label className="lbl" htmlFor="servings">
+              Servings
+            </label>
+            <input
+              id="servings"
+              type="text"
+              value={servings}
+              onChange={(e) => setServings(e.target.value)}
+              className="field"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="lbl" htmlFor="prepTime">
+              Prep time
+            </label>
+            <input
+              id="prepTime"
+              type="text"
+              value={prepTime}
+              onChange={(e) => setPrepTime(e.target.value)}
+              className="field"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="lbl" htmlFor="cookTime">
+              Cook time
+            </label>
+            <input
+              id="cookTime"
+              type="text"
+              value={cookTime}
+              onChange={(e) => setCookTime(e.target.value)}
+              className="field"
+            />
+          </div>
+        </div>
 
-      <div>
-        <label className={labelClass} htmlFor="sourceUrl">
-          Source URL
-        </label>
-        <input
-          id="sourceUrl"
-          type="url"
-          value={sourceUrl}
-          onChange={(e) => setSourceUrl(e.target.value)}
-          className={`${inputClass} mt-1`}
-        />
-      </div>
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))]">
+          <div className="flex flex-col gap-1.5">
+            <label className="lbl" htmlFor="imageUrl">
+              Image URL
+            </label>
+            <input
+              id="imageUrl"
+              type="url"
+              placeholder="https://"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              className="field"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="lbl" htmlFor="sourceUrl">
+              Source URL
+            </label>
+            <input
+              id="sourceUrl"
+              type="url"
+              placeholder="https://"
+              value={sourceUrl}
+              onChange={(e) => setSourceUrl(e.target.value)}
+              className="field"
+            />
+          </div>
+        </div>
+      </section>
 
       <TagPicker value={tags} onChange={setTags} />
 
@@ -173,12 +178,16 @@ export default function RecipeForm({ initialRecipe, onSubmit, onCancel, submitLa
 
       <InstructionsEditor instructions={instructions} onChange={setInstructions} />
 
-      <div className="flex gap-2 pt-2">
-        <button type="submit" disabled={submitting} className={primaryButtonClass}>
+      <div className="flex flex-wrap gap-3">
+        <button
+          type="submit"
+          disabled={submitting}
+          className="btn btn-primary min-h-[52px] px-8 text-base"
+        >
           {submitting ? "Saving…" : submitLabel}
         </button>
         {onCancel && (
-          <button type="button" onClick={onCancel} className={secondaryButtonClass}>
+          <button type="button" onClick={onCancel} className="btn min-h-[52px] px-7 text-base">
             Cancel
           </button>
         )}

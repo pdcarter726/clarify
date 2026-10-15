@@ -9,6 +9,7 @@ const STORAGE_KEY = "clarify_theme";
 interface ThemeContextValue {
   theme: Theme;
   toggleTheme: () => void;
+  setTheme: (theme: Theme) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -24,29 +25,34 @@ function applyTheme(theme: Theme) {
  * `localStorage` via `toggleTheme`.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setThemeState] = useState<Theme>("light");
 
   useEffect(() => {
     // localStorage/matchMedia only exist client-side, so the real theme can't be
     // known during SSR — this one-time sync-on-mount is the only way to hydrate it.
     const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
     const initial: Theme =
-      stored ?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      stored ?? "light";
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTheme(initial);
+    setThemeState(initial);
     applyTheme(initial);
   }, []);
 
-  function toggleTheme() {
-    setTheme((current) => {
-      const next: Theme = current === "dark" ? "light" : "dark";
-      localStorage.setItem(STORAGE_KEY, next);
-      applyTheme(next);
-      return next;
-    });
+  function setTheme(next: Theme) {
+    localStorage.setItem(STORAGE_KEY, next);
+    applyTheme(next);
+    setThemeState(next);
   }
 
-  return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>;
+  function toggleTheme() {
+    setTheme(theme === "dark" ? "light" : "dark");
+  }
+
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
 }
 
 /** Accesses the current `ThemeContextValue`; throws if called outside `ThemeProvider`. */

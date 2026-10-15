@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import RecipeSummaryCard from "@/components/RecipeSummaryCard";
 import TagFilterBar from "@/components/TagFilterBar";
-import { inputClass, secondaryButtonClass } from "@/components/ui";
+import Icon from "@/components/Icon";
 import { useToast } from "@/lib/toast-context";
 import { ApiError, recipesApi, tagsApi, type Recipe, type Tag } from "@/lib/api";
 
@@ -82,58 +82,82 @@ function RecipesPageContent() {
   }
 
   const isFiltered = selectedTags.length > 0 || searchQuery.trim().length > 0;
+  const countLabel = loading
+    ? "Loading…"
+    : `${recipes.length} ${recipes.length === 1 ? "recipe" : "recipes"}`;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Your recipes</h1>
-        <form onSubmit={handleImport} className="flex gap-2">
-          <input
-            type="url"
-            required
-            placeholder="Recipe, YouTube, TikTok or Instagram URL"
-            value={importUrl}
-            onChange={(e) => setImportUrl(e.target.value)}
-            className={`${inputClass} w-80`}
-          />
-          <button type="submit" disabled={importing} className={secondaryButtonClass}>
-            {importing ? "Importing…" : "Import"}
-          </button>
-        </form>
-      </div>
-
-      <input
-        type="search"
-        placeholder="Search by recipe name or ingredient…"
-        value={searchInput}
-        onChange={(e) => setSearchInput(e.target.value)}
-        className={inputClass}
-        aria-label="Search recipes"
-      />
-
-      <TagFilterBar
-        tags={tags}
-        selected={selectedTags}
-        onToggle={toggleTag}
-        onClear={() => setSelectedTags([])}
-      />
-
-      {loading ? (
-        <p className="py-12 text-center text-zinc-400">Loading…</p>
-      ) : recipes.length === 0 ? (
-        <p className="py-12 text-center text-zinc-400">
-          {isFiltered
-            ? "No recipes match your search."
-            : "No recipes yet. Create one or import from a URL above."}
-        </p>
-      ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {recipes.map((recipe) => (
-            <RecipeSummaryCard key={recipe.id} recipe={recipe} />
-          ))}
+    <main className="wrap flex-1 pb-20 pt-10">
+      <div className="flex max-w-[1080px] flex-col gap-7">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-col gap-1.5">
+            <h1 className="disp text-4xl font-bold leading-[1.1]">Your recipes</h1>
+            <p className="text-[15px] text-muted" aria-live="polite">
+              {countLabel}
+            </p>
+          </div>
+          <form onSubmit={handleImport} className="flex max-w-[520px] flex-[1_1_380px] gap-2.5">
+            <label htmlFor="import" className="sr-only-label">
+              Import a recipe from a URL
+            </label>
+            <input
+              id="import"
+              className="field flex-1"
+              type="url"
+              required
+              placeholder="Recipe, YouTube, TikTok or Instagram URL"
+              value={importUrl}
+              onChange={(e) => setImportUrl(e.target.value)}
+            />
+            <button type="submit" disabled={importing} className="btn btn-primary">
+              {importing ? "Importing…" : "Import"}
+            </button>
+          </form>
         </div>
-      )}
-    </div>
+
+        <div className="flex flex-col gap-3.5">
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3.5 top-1/2 inline-flex -translate-y-1/2 text-muted">
+              <Icon name="search" />
+            </span>
+            <input
+              className="field min-h-[52px] pl-11"
+              type="search"
+              aria-label="Search recipes"
+              placeholder="Search by recipe name or ingredient…"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+          </div>
+          <TagFilterBar
+            tags={tags}
+            selected={selectedTags}
+            onToggle={toggleTag}
+            onClear={() => setSelectedTags([])}
+          />
+        </div>
+
+        {loading && recipes.length === 0 ? (
+          <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr))]" role="status" aria-label="Loading recipes">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="sk h-[250px] rounded-2xl" />
+            ))}
+          </div>
+        ) : recipes.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-edge px-6 py-16 text-center text-base text-muted">
+            {isFiltered
+              ? "No recipes match your search."
+              : "No recipes yet. Create one or import from a URL above."}
+          </div>
+        ) : (
+          <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr))]">
+            {recipes.map((recipe) => (
+              <RecipeSummaryCard key={recipe.id} recipe={recipe} />
+            ))}
+          </div>
+        )}
+      </div>
+    </main>
   );
 }
 
