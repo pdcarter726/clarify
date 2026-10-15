@@ -410,7 +410,6 @@ export default function LandingPage() {
         <section className="wrap pb-24">
           <div className="grid items-center gap-12 rounded-[28px] border border-line bg-surface p-[clamp(24px,5vw,56px)] [grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr))]">
             <div className="flex min-w-0 flex-col gap-5">
-              <span className="chip chip-tint self-start">Where the name comes from</span>
               <h2 className="disp text-[clamp(30px,3.6vw,40px)] font-bold leading-[1.1] [text-wrap:balance]">
                 Named for clarified butter
               </h2>
